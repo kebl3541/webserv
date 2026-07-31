@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webserv</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161920;
+    --border: #252932;
+    --text: #e6e8eb;
+    --muted: #9aa3ad;
+    --accent: #7aa2f7;
+    --green: #9ece6a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fbfbfd; --panel: #ffffff; --border: #e3e6ea;
+      --text: #1a1d23; --muted: #5c6672; --accent: #2f6feb; --green: #2f8a3f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 52rem; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 2rem; margin-bottom: 2.5rem; }
+  h1 { font-size: 2.5rem; margin: 0 0 .5rem; letter-spacing: -.03em; font-weight: 650; }
+  .tag {
+    display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .78rem; color: var(--green); border: 1px solid var(--border);
+    border-radius: 999px; padding: .15rem .7rem; margin-bottom: 1rem;
+  }
+  .lede { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  h2 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .08em;
+       color: var(--muted); margin: 2.5rem 0 1rem; font-weight: 600; }
+  .grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.1rem 1.2rem;
+  }
+  .card a { color: var(--accent); text-decoration: none; font-weight: 550; }
+  .card a:hover { text-decoration: underline; }
+  .card p { margin: .35rem 0 0; color: var(--muted); font-size: .9rem; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 5px; padding: .1rem .35rem;
+  }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+           color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="tag">HTTP/1.1 &middot; C++98 &middot; single-threaded</div>
+    <h1>webserv</h1>
+    <p class="lede">A web server written from scratch: one <code>poll()</code> loop,
+       no threads, no external libraries. Every socket, parser and child process
+       is managed by hand.</p>
+  </header>
+
+  <h2>Try it</h2>
+  <div class="grid">
+    <div class="card">
+      <a href="/files/">Directory listing</a>
+      <p>Autoindex rendering for a directory with no index file.</p>
+    </div>
+    <div class="card">
+      <a href="/docs/">Alias routing</a>
+      <p>A prefix that maps onto a different directory entirely.</p>
+    </div>
+    <div class="card">
+      <a href="/uploads/">Uploads</a>
+      <p>POST a file here, then delete it again with DELETE.</p>
+    </div>
+    <div class="card">
+      <a href="/cgi-bin/hello.py">CGI</a>
+      <p>A Python script executed through the CGI/1.1 interface.</p>
+    </div>
+    <div class="card">
+      <a href="/cgi-bin/env.py?name=world">CGI with a query</a>
+      <p>Shows the environment the server hands to a script.</p>
+    </div>
+    <div class="card">
+      <a href="/old-page">Redirect</a>
+      <p>A configured 301 back to this page.</p>
+    </div>
+    <div class="card">
+      <a href="/nothing-here">404</a>
+      <p>A custom error page, chosen by the configuration.</p>
+    </div>
+    <div class="card">
+      <a href="http://127.0.0.1:8081/">Second server</a>
+      <p>A separate port, served by the same process and the same loop.</p>
+    </div>
+  </div>
+
+  <h2>From the command line</h2>
+  <div class="card">
+    <p style="color:var(--text)">Upload a file, then remove it:</p>
+    <p><code>curl -F "file=@notes.txt" http://127.0.0.1:8080/uploads/</code></p>
+    <p><code>curl -X DELETE http://127.0.0.1:8080/uploads/notes.txt</code></p>
+    <p style="color:var(--text);margin-top:1rem">Send a chunked body:</p>
+    <p><code>curl -H "Transfer-Encoding: chunked" -d @notes.txt http://127.0.0.1:8080/cgi-bin/echo.py</code></p>
+  </div>
+
+  <footer>webserv &middot; built for the 42 curriculum, then rewritten properly.</footer>
+</main>
+</body>
+</html>

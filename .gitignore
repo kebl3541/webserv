@@ -1,0 +1,22 @@
+# Build output
+build/
+webserv
+*.o
+*.d
+
+# Uploaded at runtime
+www/uploads/*
+!www/uploads/.gitkeep
+www2/uploads/*
+!www2/uploads/.gitkeep
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*~
+
+# Sanitizer and debug artefacts
+*.dSYM/
+core
