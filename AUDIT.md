@@ -438,6 +438,40 @@ queued separately from the response, because it has to be written while the
 connection is still reading, and the poll set asks for writability alongside
 readability until it has drained.
 
+**A symbolic link escaped the document root.** Path containment was checked
+lexically, by normalising the text and confirming the result still started with
+the root. That check cannot see a symbolic link.
+
+```bash
+ln -s /etc/passwd www/files/leak.txt
+curl http://127.0.0.1:8080/files/leak.txt
+```
+
+The server returned the contents of `/etc/passwd`. `ln -s / www/files/root`
+exposed the entire filesystem through one link. Every layer of the traversal
+defence was working as designed; the defence was simply aimed at the wrong
+thing, because `www/files/leak.txt` really is inside the root as text.
+
+The resolved path is now canonicalised with `realpath`, which follows every
+link, and checked against the canonicalised root. A path that does not exist yet
+resolves through its parent directory instead, so an upload target is still
+pinned to a real location rather than being waved through. Both cases are tests.
+
+The lesson generalises: a check that operates on a name rather than on the thing
+the name refers to will be defeated by any layer of indirection between them.
+
+**`Connection` was matched as a substring.** A value such as
+`keep-alive, x-close-notify` contains the word `close`, so the server hung up on
+a client that had explicitly asked to stay connected. `Connection` carries a
+comma-separated token list and is compared token by token now.
+
+**Listening was IPv4 only.** A host name that resolves to both families was
+served on just one of them. Clients resolve `localhost` to `::1` first, so the
+first connection attempt to `http://localhost:8080` was refused; curl and most
+browsers retry on IPv4 and hide it, and anything that does not retry simply
+fails. A server block now binds every address its host resolves to, one listener
+each, with `IPV6_V6ONLY` set so the two families do not contend for the port.
+
 Alongside those, the documentation recorded a set of limitations that were left
 in place deliberately rather than fixed. The most substantial is that
 `resolvePath` normalises lexically and therefore does not follow symlinks, so a
