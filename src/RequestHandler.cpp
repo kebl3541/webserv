@@ -94,6 +94,36 @@ bool	resolvePath(const std::string& uriPath,
 		return false;
 	}
 
+	// Everything above is lexical, and lexical checks cannot see a symbolic
+	// link. A link inside the document root pointing at /etc/passwd produces a
+	// path that is textually well inside the root while naming a file well
+	// outside it, so the text has to be resolved against the filesystem and
+	// checked again.
+	std::string	realBase;
+	std::string	realTarget;
+
+	if (!Utils::resolveReal(base, realBase))
+	{
+		Logger::error("configured root does not resolve: " + base);
+		return false;
+	}
+	if (Utils::resolveReal(normalised, realTarget))
+	{
+		std::string	realGuard = realBase;
+		if (realGuard.empty() || realGuard[realGuard.size() - 1] != '/')
+			realGuard += "/";
+
+		if (realTarget != realBase && !Utils::startsWith(realTarget, realGuard))
+		{
+			Logger::warn("rejected symlink escaping its root: " + normalised
+				+ " resolves to " + realTarget);
+			return false;
+		}
+	}
+	// When neither the path nor its parent resolves, nothing exists there to be
+	// leaked. The lexical result is returned and the caller's existence check
+	// turns it into a 404.
+
 	out = normalised;
 	return true;
 }

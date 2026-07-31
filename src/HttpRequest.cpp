@@ -35,7 +35,6 @@ HttpRequest::HttpRequest()
 	  _statusCode(0),
 	  _cursor(0),
 	  _contentLength(0),
-	  _chunked(false),
 	  _chunkRemaining(0),
 	  _maxBodySize(1048576),
 	  _headerBytes(0)
@@ -62,7 +61,6 @@ void	HttpRequest::reset(void)
 	_headers.clear();
 	_body.clear();
 	_contentLength = 0;
-	_chunked = false;
 	_chunkRemaining = 0;
 	_headerBytes = 0;
 }
@@ -135,6 +133,19 @@ bool	HttpRequest::failWith(int code)
 	return false;
 }
 
+void	HttpRequest::compact(void)
+{
+	// Bytes behind the cursor have been parsed and will never be read again.
+	// Dropping them keeps peak memory near the size of the request rather than
+	// roughly twice it, which matters because the body is copied out into
+	// _body as it is consumed. Compacting is only worth its own copy once
+	// enough has accumulated to pay for it.
+	if (_cursor < 65536)
+		return ;
+	_buffer.erase(0, _cursor);
+	_cursor = 0;
+}
+
 bool	HttpRequest::takeLine(std::string& line)
 {
 	size_t	position = _buffer.find("\r\n", _cursor);
@@ -152,6 +163,7 @@ bool	HttpRequest::consume(const char* data, size_t length)
 		return false;
 	if (data && length > 0)
 		_buffer.append(data, length);
+	compact();
 
 	// Each helper returns false when it needs more bytes, which ends the pass
 	// without treating "incomplete" as "broken".
@@ -288,8 +300,12 @@ bool	HttpRequest::parseHeaderBlock(void)
 			return prepareBody();
 		}
 
-		_headerBytes += line.size();
-		if (_headerBytes > MAX_HEADER_BYTES || _headers.size() > MAX_HEADER_COUNT)
+		// The two CRLF bytes that terminated this line count towards the cap as
+		// well, since they are bytes the peer made the server buffer.
+		_headerBytes += line.size() + 2;
+		// Checked with the header about to be added, so the limit is the number
+		// of headers accepted rather than one more than that.
+		if (_headerBytes > MAX_HEADER_BYTES || _headers.size() + 1 > MAX_HEADER_COUNT)
 			return failWith(431);
 
 		// Obsolete line folding: a header continued onto an indented line.
@@ -340,7 +356,6 @@ bool	HttpRequest::prepareBody(void)
 	{
 		if (Utils::toLower(header("transfer-encoding")) != "chunked")
 			return failWith(501);
-		_chunked = true;
 		_state = PARSING_CHUNK_SIZE;
 		return true;
 	}
@@ -468,15 +483,30 @@ bool	HttpRequest::readChunkTrailer(void)
 	return false;
 }
 
+bool	HttpRequest::hasConnectionToken(const std::string& token) const
+{
+	// Connection carries a comma-separated list of tokens, so it has to be
+	// compared token by token. A substring search would treat a value such as
+	// "keep-alive, x-close-notify" as a request to close, because the word
+	// "close" appears inside an unrelated token.
+	const std::string			value = Utils::toLower(header("connection"));
+	std::vector<std::string>	tokens = Utils::split(value, ",");
+
+	for (size_t i = 0; i < tokens.size(); ++i)
+	{
+		if (Utils::trim(tokens[i]) == token)
+			return true;
+	}
+	return false;
+}
+
 bool	HttpRequest::wantsKeepAlive(void) const
 {
-	const std::string	connection = Utils::toLower(header("connection"));
-
-	if (connection.find("close") != std::string::npos)
+	if (hasConnectionToken("close"))
 		return false;
 	if (_version == "HTTP/1.0")
 		// 1.0 defaults to closing unless the client opts in.
-		return connection.find("keep-alive") != std::string::npos;
+		return hasConnectionToken("keep-alive");
 	return true;
 }
 

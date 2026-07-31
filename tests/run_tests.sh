@@ -224,6 +224,21 @@ else
 fi
 check_contains 'the name is escaped instead' '&lt;img' "${xss_body}"
 
+# A lexical path check cannot see a symbolic link: the text stays inside the
+# root while the file it names sits outside it.
+ln -sfn /etc/passwd "${ROOT}/www/files/symlink-escape.txt"
+sym_code="$(status "${BASE}/files/symlink-escape.txt")"
+sym_body="$(curl -s --max-time 10 "${BASE}/files/symlink-escape.txt" | grep -c 'root:' || true)"
+rm -f "${ROOT}/www/files/symlink-escape.txt"
+check 'a symlink out of the root is refused' 403 "${sym_code}"
+check 'and its content never reaches the client' 0 "${sym_body}"
+
+# A symlinked directory would otherwise expose the entire filesystem.
+ln -sfn / "${ROOT}/www/files/symlink-root"
+symdir_code="$(status "${BASE}/files/symlink-root/etc/passwd")"
+rm -f "${ROOT}/www/files/symlink-root"
+check 'a symlinked directory cannot be traversed' 403 "${symdir_code}"
+
 # ---------------------------------------------------------------------------
 section 'Crash regressions (each of these killed the original server)'
 
@@ -365,6 +380,17 @@ check_contains 'keep-alive is advertised' 'keep-alive' \
 check_contains 'Connection: close is honoured' 'close' \
 	"$(curl -s -D- -o /dev/null --max-time 10 -H 'Connection: close' "${BASE}/" | tr -d '\r' | grep -i '^connection' || echo none)"
 
+# Connection is a token list. A substring search sees "close" inside an
+# unrelated token and hangs up on a client that asked to stay connected.
+check_contains 'a token merely containing "close" does not close' 'keep-alive' \
+	"$(raw 'GET / HTTP/1.1\r\nHost: x\r\nConnection: keep-alive, x-close-notify\r\n\r\n' \
+		| tr -d '\r' | grep -i '^connection' || echo none)"
+
+# The client withholds its body until it hears this, so a server that never
+# sends it makes every such upload wait out the client's own timeout.
+check_contains 'Expect: 100-continue is answered' '100 Continue' \
+	"$(raw 'POST /uploads/ HTTP/1.1\r\nHost: x\r\nContent-Type: text/plain\r\nContent-Length: 5\r\nExpect: 100-continue\r\n\r\n')"
+
 # ---------------------------------------------------------------------------
 section 'Concurrency'
 
@@ -397,9 +423,38 @@ rm -f "${ROOT}/www/files/large.bin"
 # ---------------------------------------------------------------------------
 section 'Second server'
 
+# A host name that resolves to both families must be served on both. Binding
+# only IPv4 means the first connection attempt to "localhost" is refused,
+# because clients try the IPv6 address first and not all of them retry.
+if curl -s -o /dev/null --max-time 5 -6 "http://[::1]:${PORT}/" 2>/dev/null; then
+	pass 'the IPv6 loopback address is served'
+elif ! ping6 -c1 -W1 ::1 >/dev/null 2>&1; then
+	printf '  %s…%s IPv6 unavailable on this host; skipping\n' "${GREY}" "${RESET}"
+else
+	fail 'the IPv6 loopback address is served' '200 over ::1' 'connection refused'
+fi
+check 'the IPv4 loopback address is served' 200 "$(status -4 "http://127.0.0.1:${PORT}/")"
+
 check 'the second port answers'   200 "$(status "http://${HOST}:${PORT2}/")"
 check_contains 'with its own root' 'The second server' \
 	"$(curl -s --max-time 10 "http://${HOST}:${PORT2}/")"
+
+# ---------------------------------------------------------------------------
+section 'Stalled peers'
+
+# A client that asks for a large file and then stops reading leaves the server
+# holding a response it cannot deliver. Refreshing the idle deadline each time
+# that connection is examined means it is never closed, which is a connection
+# leak an attacker can open at will. This asserts the descriptors come back.
+dd if=/dev/urandom of="${ROOT}/www/files/stall.bin" bs=1024 count=8192 2>/dev/null
+stall_result="$(python3 "${ROOT}/tests/stall_check.py" "${SERVER_PID}" "${PORT}" /files/stall.bin --timeout 90)"
+rm -f "${ROOT}/www/files/stall.bin"
+if [[ "${stall_result}" == *"leftover=0"* ]]; then
+	pass "stalled readers are eventually reaped (${stall_result})"
+else
+	fail 'stalled readers are eventually reaped' 'leftover=0' "${stall_result}"
+fi
+check 'the server still answers afterwards' 200 "$(status "${BASE}/")"
 
 # ---------------------------------------------------------------------------
 section 'Shutdown'

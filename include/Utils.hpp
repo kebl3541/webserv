@@ -48,6 +48,12 @@ namespace Utils
 	// this, since a file can be named after a script tag.
 	std::string	htmlEscape(const std::string& text);
 
+	// Resolves a path to its canonical form with every symbolic link followed.
+	// A path that does not exist yet resolves through its parent directory, so
+	// a file about to be created is still checked against a real location.
+	// Returns false when neither the path nor its parent can be resolved.
+	bool	resolveReal(const std::string& path, std::string& out);
+
 	// Percent-encodes everything outside the unreserved set, so a filename
 	// containing a space, a quote or a hash still produces a usable href.
 	std::string	uriEncode(const std::string& text);

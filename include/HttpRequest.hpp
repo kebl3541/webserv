@@ -3,6 +3,7 @@
 
 # include <map>
 # include <string>
+# include <vector>
 
 // Incremental HTTP/1.1 request parser.
 //
@@ -53,6 +54,9 @@ class HttpRequest
 		const std::map<std::string, std::string>&	headers(void) const;
 
 		bool	wantsKeepAlive(void) const;
+
+		// Case-insensitive lookup of one token in the Connection header.
+		bool	hasConnectionToken(const std::string& token) const;
 		bool	expectsContinue(void) const;
 
 		// Enforced while the body streams in, so an oversized upload is cut off
@@ -80,6 +84,9 @@ class HttpRequest
 		// Locates a CRLF-terminated line in the pending buffer.
 		bool	takeLine(std::string& line);
 
+		// Discards bytes the parser has already consumed.
+		void	compact(void);
+
 		State		_state;
 		int			_statusCode;
 
@@ -96,7 +103,6 @@ class HttpRequest
 
 		std::string	_body;
 		size_t		_contentLength;
-		bool		_chunked;
 		size_t		_chunkRemaining;
 		size_t		_maxBodySize;
 		size_t		_headerBytes;

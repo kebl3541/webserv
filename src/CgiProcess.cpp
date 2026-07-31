@@ -232,6 +232,17 @@ bool	CgiProcess::start(const HttpRequest& request,
 		envp.push_back(duplicate(it->first + "=" + it->second));
 	envp.push_back(NULL);
 
+	// Built here for the same reason as the arrays above: the child may not
+	// allocate, so the directory it will change into is prepared in advance as
+	// a plain buffer.
+	char	workingDirectory[PATH_MAX];
+	std::memset(workingDirectory, 0, sizeof(workingDirectory));
+	{
+		const size_t	slash = absoluteScript.find_last_of('/');
+		if (slash != std::string::npos && slash > 0 && slash < sizeof(workingDirectory))
+			std::memcpy(workingDirectory, absoluteScript.c_str(), slash);
+	}
+
 	_pid = fork();
 	if (_pid == -1)
 	{
@@ -266,10 +277,12 @@ bool	CgiProcess::start(const HttpRequest& request,
 		signal(SIGPIPE, SIG_DFL);
 
 		// Scripts routinely use relative paths against their own directory.
-		std::string	directory = absoluteScript.substr(0, absoluteScript.find_last_of('/'));
-		if (!directory.empty())
+		// The string itself was built before the fork: between fork and execve
+		// only async-signal-safe calls are allowed, and allocating there risks
+		// deadlocking on the allocator's own lock.
+		if (workingDirectory[0] != '\0')
 		{
-			if (chdir(directory.c_str()) != 0)
+			if (chdir(workingDirectory) != 0)
 				_exit(1);
 		}
 

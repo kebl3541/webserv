@@ -71,21 +71,23 @@ bool	EventLoop::setup(void)
 
 	for (size_t i = 0; i < servers.size(); ++i)
 	{
-		ListenSocket*	listener = new ListenSocket();
+		const size_t	before = _listeners.size();
 
-		if (!listener->open(servers[i]))
-		{
-			delete listener;
-			// One endpoint failing to bind is fatal: silently serving a subset
-			// of the configuration would be worse than refusing to start.
+		// A server block can yield several listeners, one per address its host
+		// resolves to, so that a name covering both IPv6 and IPv4 is served on
+		// both rather than only on whichever the resolver happened to return.
+		if (!ListenSocket::openAll(servers[i], _listeners))
+			// An endpoint failing to bind entirely is fatal: silently serving a
+			// subset of the configuration would be worse than refusing to start.
 			return false;
-		}
 
-		FdEntry	entry;
-		entry.role = ROLE_LISTEN;
-		entry.index = _listeners.size();
-		_registry[listener->fd()] = entry;
-		_listeners.push_back(listener);
+		for (size_t j = before; j < _listeners.size(); ++j)
+		{
+			FdEntry	entry;
+			entry.role = ROLE_LISTEN;
+			entry.index = j;
+			_registry[_listeners[j]->fd()] = entry;
+		}
 	}
 
 	return !_listeners.empty();

@@ -1,6 +1,8 @@
 #include "Utils.hpp"
 
 #include <sys/stat.h>
+#include <limits.h>
+#include <stdlib.h>
 #include <cctype>
 #include <cstdio>
 #include <ctime>
@@ -279,6 +281,34 @@ bool	pathExists(const std::string& path)
 	struct stat	info;
 
 	return stat(path.c_str(), &info) == 0;
+}
+
+bool	resolveReal(const std::string& path, std::string& out)
+{
+	char	buffer[PATH_MAX];
+
+	if (realpath(path.c_str(), buffer) != NULL)
+	{
+		out = buffer;
+		return true;
+	}
+
+	// realpath fails on anything that does not exist, which includes the target
+	// of an upload. Resolving the parent and re-attaching the final component
+	// still pins the result to a real directory, which is what the containment
+	// check needs.
+	size_t	slash = path.find_last_of('/');
+	if (slash == std::string::npos)
+		return false;
+
+	const std::string	parent = (slash == 0) ? "/" : path.substr(0, slash);
+	const std::string	leaf = path.substr(slash + 1);
+
+	if (realpath(parent.c_str(), buffer) == NULL)
+		return false;
+
+	out = joinPath(std::string(buffer), leaf);
+	return true;
 }
 
 std::string	htmlEscape(const std::string& text)
