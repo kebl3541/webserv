@@ -339,7 +339,7 @@ The rewrite names the states, so the compiler participates in the argument.
 - The whole POST body was written into the CGI pipe in one blocking loop, which
   deadlocks once the body exceeds the pipe buffer and the child is
   simultaneously blocked writing output nobody is reading. See
-  [EXPLAINED/CgiProcess.md](EXPLAINED/CgiProcess.md).
+  `CgiProcess::writeChunk`.
 - CGI pipe descriptors leaked on several error paths.
 - `Config::operator=` allocated an array, immediately overwrote the pointer with
   another, and leaked the allocation. The class is non-copyable in the rewrite.
@@ -375,3 +375,40 @@ A third was caught in manual testing: the CGI child changes directory into the
 script's directory, so a relative script path no longer resolved after the
 `chdir`, and every CGI request returned 502. The path handed to `execve` is
 resolved to an absolute one first.
+
+Three more were found later, while writing the line-by-line documentation that
+accompanies this project. Explaining code to someone else turns out to be a
+better review than reading the diff again, because you cannot write down why a
+line is correct without noticing when it is not.
+
+**Stored cross-site scripting in the directory listing.** The autoindex wrote
+entry names straight into the HTML:
+
+```cpp
+html << "    <li><a href=\"" << files[i] << "\">" << files[i] << "</a></li>\n";
+```
+
+A filename is attacker-controlled anywhere uploads are permitted. Uploading a
+file named `<img src=x onerror=alert(1)>.txt` and then getting anyone to view
+the listing executes script in their browser, in the server's origin. Names are
+now HTML-escaped, and hrefs are percent-encoded so that a name containing a
+quote or a hash still produces a working link. Two regression tests cover it.
+
+This one is worth dwelling on, because it is the same mistake as the original
+multipart crash wearing different clothes: data from outside the system was
+used without being validated for the context it was about to enter. The
+difference is only in which context, HTML rather than a pointer arithmetic.
+
+**Repeated response headers were collapsed.** CGI headers were accumulated in a
+`std::map` keyed by name. `Set-Cookie` is the one common header that must not be
+combined into a comma-separated list, so a script setting two cookies had one
+silently discarded. Repeated headers now keep their order and multiplicity.
+
+**A wrong `Allow` header.** A `POST` to a location with no `upload_store`
+answered 405 with a hardcoded `Allow: GET, HEAD`, which is wrong wherever that
+location also permits `DELETE`. It is derived from the configured set now.
+
+Alongside those, the documentation recorded a set of limitations that were left
+in place deliberately rather than fixed. The most substantial is that
+`resolvePath` normalises lexically and therefore does not follow symlinks, so a
+symlink inside the document root pointing outside it would be served.
