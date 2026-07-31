@@ -23,6 +23,8 @@ Connection::Connection(int fd, const ServerConfig& server)
 	  _server(&server),
 	  _state(READING_REQUEST),
 	  _outputOffset(0),
+	  _interimOffset(0),
+	  _continueSent(false),
 	  _cgi(NULL),
 	  _keepAlive(true),
 	  _headOnly(false),
@@ -86,6 +88,17 @@ bool	Connection::onReadable(void)
 	// rejected while it streams rather than after it has all been buffered.
 	applyLocationBodyLimit();
 
+	// The client is holding its body back until it hears that the request is
+	// acceptable. Without this it waits out its own timeout, typically a full
+	// second, before sending anything, so every large upload starts late.
+	if (!_continueSent && !_request.hasFailed() && !_request.isComplete()
+		&& _request.headersParsed() && _request.expectsContinue())
+	{
+		_continueSent = true;
+		_interimBuffer = "HTTP/1.1 100 Continue\r\n\r\n";
+		_interimOffset = 0;
+	}
+
 	if (_request.hasFailed())
 	{
 		// A malformed request poisons the byte stream, so the connection
@@ -97,6 +110,36 @@ bool	Connection::onReadable(void)
 
 	if (_request.isComplete())
 		dispatch();
+	return true;
+}
+
+bool	Connection::hasPendingInterim(void) const
+{
+	return _interimOffset < _interimBuffer.size();
+}
+
+bool	Connection::flushInterim(void)
+{
+	if (!hasPendingInterim())
+		return true;
+
+	size_t	remaining = _interimBuffer.size() - _interimOffset;
+	ssize_t	written = send(_fd, _interimBuffer.data() + _interimOffset, remaining, 0);
+
+	if (written <= 0)
+	{
+		_state = CLOSING;
+		return false;
+	}
+	touch();
+	_interimOffset += static_cast<size_t>(written);
+	if (!hasPendingInterim())
+	{
+		// Cleared rather than kept, so that a second request on this connection
+		// starts with an empty queue.
+		_interimBuffer.clear();
+		_interimOffset = 0;
+	}
 	return true;
 }
 
@@ -280,6 +323,9 @@ void	Connection::recycle(void)
 	_outputBuffer.clear();
 	_outputOffset = 0;
 	_headOnly = false;
+	_interimBuffer.clear();
+	_interimOffset = 0;
+	_continueSent = false;
 	// The next request on this connection may match a different location, so
 	// the narrowed limit must not carry over.
 	_bodyLimitApplied = false;

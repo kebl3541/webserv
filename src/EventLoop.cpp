@@ -122,6 +122,11 @@ void	EventLoop::buildPollSet(std::vector<struct pollfd>& pollSet)
 				{
 					case Connection::READING_REQUEST:
 						entry.events = POLLIN;
+						// A queued 100 Continue has to go out while the
+						// connection is still reading, so writability is added
+						// on top of readability rather than replacing it.
+						if (found->second->hasPendingInterim())
+							entry.events |= POLLOUT;
 						break ;
 					case Connection::WRITING_RESPONSE:
 						entry.events = POLLOUT;
@@ -230,7 +235,11 @@ void	EventLoop::handleEvent(const struct pollfd& entry)
 			}
 
 			bool	alive = true;
-			if (entry.revents & POLLIN)
+			// The interim reply is drained first: the client is waiting on it
+			// before it will send the body this connection is reading for.
+			if ((entry.revents & POLLOUT) && client->second->hasPendingInterim())
+				alive = client->second->flushInterim();
+			else if (entry.revents & POLLIN)
 				alive = client->second->onReadable();
 			else if (entry.revents & POLLOUT)
 				alive = client->second->onWritable();
@@ -415,16 +424,29 @@ void	EventLoop::enforceTimeouts(void)
 		if (now - connection->lastActivity() < _clientTimeout)
 			continue ;
 
-		// An idle keep-alive connection is simply closed; one that timed out
-		// mid-request gets a 408 so the client learns why. This is the defence
-		// against a Slowloris client that opens sockets and never finishes.
-		if (connection->isIdle())
+		// A connection that is still writing when it times out has a peer that
+		// has stopped reading, so there is nowhere to put a diagnostic: the
+		// only useful move is to close. This branch also catches a connection
+		// that was already sent a 408 below, because sending it moved the
+		// connection into the writing state and did not refresh its timer.
+		//
+		// Refreshing the timer here instead would mean a stalled peer never
+		// times out at all: it would be handed a fresh 408 and a fresh deadline
+		// on every expiry, holding its slot forever. That is a connection leak
+		// an attacker can open at will, and it is what this branch prevents.
+		if (connection->state() == Connection::WRITING_RESPONSE)
 			scheduleClose(it->first);
+		// An idle keep-alive connection is closed without ceremony: nothing was
+		// in flight, so there is nothing to report.
+		else if (connection->isIdle())
+			scheduleClose(it->first);
+		// A connection stalled part way through a request gets a 408 so the
+		// client learns why, and deliberately keeps its expired timer, so the
+		// next pass closes it once the response has had a moment to drain.
+		// This is the defence against a Slowloris client that opens sockets and
+		// dribbles bytes to hold them open.
 		else
-		{
 			connection->sendError(408);
-			connection->touch();
-		}
 	}
 }
 

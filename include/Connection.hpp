@@ -48,6 +48,13 @@ class Connection
 		// Returns false when the connection must be closed.
 		bool	onWritable(void);
 
+		// A client that sent "Expect: 100-continue" waits for an interim
+		// response before it sends the body. That reply has to go out while the
+		// connection is still reading, so it is queued separately from the real
+		// response rather than going through the writing state.
+		bool	hasPendingInterim(void) const;
+		bool	flushInterim(void);
+
 		// Drives the CGI exchange; called when either CGI pipe is ready.
 		void	onCgiReadable(void);
 		void	onCgiWritable(void);
@@ -91,6 +98,10 @@ class Connection
 
 		std::string			_outputBuffer;
 		size_t				_outputOffset;	// how much has reached the socket
+
+		std::string			_interimBuffer;	// a 100 Continue awaiting its socket
+		size_t				_interimOffset;
+		bool				_continueSent;
 
 		CgiProcess*			_cgi;
 

@@ -151,35 +151,31 @@ bool	buildAutoIndex(const std::string& directoryPath,
 
 	std::ostringstream	html;
 	html << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
-		 << "  <meta charset=\"utf-8\">\n"
-		 << "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-		 << "  <title>Index of " << Utils::htmlEscape(uriPath) << "</title>\n"
-		 << "  <style>\n"
-		 << "    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n"
-		 << "           background: #0f1115; color: #e6e8eb; margin: 0; padding: 2.5rem 1.5rem; }\n"
-		 << "    main { max-width: 46rem; margin: 0 auto; }\n"
-		 << "    h1 { font-size: 1.1rem; font-weight: 600; color: #9aa3ad;\n"
-		 << "         border-bottom: 1px solid #2a2f36; padding-bottom: 0.75rem; }\n"
-		 << "    ul { list-style: none; padding: 0; }\n"
-		 << "    li { padding: 0.35rem 0; }\n"
-		 << "    a { color: #7aa2f7; text-decoration: none; }\n"
-		 << "    a:hover { text-decoration: underline; }\n"
-		 << "    .dir { color: #9ece6a; }\n"
-		 << "  </style>\n</head>\n<body>\n<main>\n"
-		 << "  <h1>Index of " << Utils::htmlEscape(uriPath) << "</h1>\n  <ul>\n";
+		 << "<meta charset=\"utf-8\">\n"
+		 << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+		 << "<title>Index of " << Utils::htmlEscape(uriPath) << "</title>\n"
+		 << "<style>\n"
+		 << "  html { font-size: 15px; }\n"
+		 << "  body { max-width: 40em; margin: 3em auto; padding: 0 1.5em;\n"
+		 << "         font-family: Menlo, Consolas, monospace;\n"
+		 << "         line-height: 1.6; color: #1a1a1a; background: #fff; }\n"
+		 << "  h1 { font-size: 1em; font-weight: bold; margin: 0 0 .8em;\n"
+		 << "       padding-bottom: .5em; border-bottom: 1px solid #ddd; }\n"
+		 << "  ul { list-style: none; padding: 0; margin: 0; }\n"
+		 << "  li { padding: .15em 0; }\n"
+		 << "  a { color: #0645ad; text-decoration: none; }\n"
+		 << "  a:hover { text-decoration: underline; }\n"
+		 << "</style>\n</head>\n<body>\n"
+		 << "<h1>Index of " << Utils::htmlEscape(uriPath) << "</h1>\n<ul>\n";
 
-	// Entry names come from the filesystem and a file can be named after a
-	// script tag, so the text is HTML-escaped and the href is percent-encoded.
-	// Writing them raw would turn any directory a user can upload into a
-	// stored cross-site scripting vector.
 	for (size_t i = 0; i < directories.size(); ++i)
-		html << "    <li><a class=\"dir\" href=\"" << Utils::uriEncode(directories[i])
+		html << "<li><a href=\"" << Utils::uriEncode(directories[i])
 			 << "\">" << Utils::htmlEscape(directories[i]) << "</a></li>\n";
 	for (size_t i = 0; i < files.size(); ++i)
-		html << "    <li><a href=\"" << Utils::uriEncode(files[i]) << "\">"
+		html << "<li><a href=\"" << Utils::uriEncode(files[i]) << "\">"
 			 << Utils::htmlEscape(files[i]) << "</a></li>\n";
 
-	html << "  </ul>\n</main>\n</body>\n</html>\n";
+	html << "</ul>\n</body>\n</html>\n";
 
 	response.setStatus(200);
 	response.setBody(html.str(), "text/html; charset=utf-8");

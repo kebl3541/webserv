@@ -5,111 +5,106 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>webserv</title>
 <style>
-  :root {
-    --bg: #0f1115;
-    --panel: #161920;
-    --border: #252932;
-    --text: #e6e8eb;
-    --muted: #9aa3ad;
-    --accent: #7aa2f7;
-    --green: #9ece6a;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #fbfbfd; --panel: #ffffff; --border: #e3e6ea;
-      --text: #1a1d23; --muted: #5c6672; --accent: #2f6feb; --green: #2f8a3f;
-    }
-  }
-  * { box-sizing: border-box; }
+  html { font-size: 15px; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6;
+    max-width: 40em;
+    margin: 3em auto;
+    padding: 0 1.5em 5em;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+    color: #1a1a1a;
+    background: #fff;
   }
-  main { max-width: 52rem; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
-  header { border-bottom: 1px solid var(--border); padding-bottom: 2rem; margin-bottom: 2.5rem; }
-  h1 { font-size: 2.5rem; margin: 0 0 .5rem; letter-spacing: -.03em; font-weight: 650; }
-  .tag {
-    display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: .78rem; color: var(--green); border: 1px solid var(--border);
-    border-radius: 999px; padding: .15rem .7rem; margin-bottom: 1rem;
+  h1 { font-size: 1.6em; margin: 0 0 .2em; font-weight: normal; }
+  h2 {
+    font-size: 1em; font-weight: bold; margin: 2.2em 0 .6em;
+    font-family: Menlo, Consolas, monospace;
   }
-  .lede { color: var(--muted); font-size: 1.05rem; margin: 0; }
-  h2 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .08em;
-       color: var(--muted); margin: 2.5rem 0 1rem; font-weight: 600; }
-  .grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 1.1rem 1.2rem;
+  p { margin: .6em 0; }
+  a { color: #0645ad; }
+  a:visited { color: #0b0080; }
+  code, pre { font-family: Menlo, Consolas, monospace; font-size: .88em; }
+  pre {
+    background: #f6f6f6;
+    border-left: 2px solid #ddd;
+    padding: .7em 1em;
+    overflow-x: auto;
   }
-  .card a { color: var(--accent); text-decoration: none; font-weight: 550; }
-  .card a:hover { text-decoration: underline; }
-  .card p { margin: .35rem 0 0; color: var(--muted); font-size: .9rem; }
-  code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em;
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 5px; padding: .1rem .35rem;
-  }
-  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
-           color: var(--muted); font-size: .85rem; }
+  dt { margin-top: .7em; font-family: Menlo, Consolas, monospace; font-size: .9em; }
+  dd { margin: 0 0 0 1.8em; color: #444; font-size: .95em; }
+  .sub { color: #666; font-size: .9em; margin-top: 0; }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <div class="tag">HTTP/1.1 &middot; C++98 &middot; single-threaded</div>
-    <h1>webserv</h1>
-    <p class="lede">A web server written from scratch: one <code>poll()</code> loop,
-       no threads, no external libraries. Every socket, parser and child process
-       is managed by hand.</p>
-  </header>
 
-  <h2>Try it</h2>
-  <div class="grid">
-    <div class="card">
-      <a href="/files/">Directory listing</a>
-      <p>Autoindex rendering for a directory with no index file.</p>
-    </div>
-    <div class="card">
-      <a href="/docs/">Alias routing</a>
-      <p>A prefix that maps onto a different directory entirely.</p>
-    </div>
-    <div class="card">
-      <a href="/uploads/">Uploads</a>
-      <p>POST a file here, then delete it again with DELETE.</p>
-    </div>
-    <div class="card">
-      <a href="/cgi-bin/hello.py">CGI</a>
-      <p>A Python script executed through the CGI/1.1 interface.</p>
-    </div>
-    <div class="card">
-      <a href="/cgi-bin/env.py?name=world">CGI with a query</a>
-      <p>Shows the environment the server hands to a script.</p>
-    </div>
-    <div class="card">
-      <a href="/old-page">Redirect</a>
-      <p>A configured 301 back to this page.</p>
-    </div>
-    <div class="card">
-      <a href="/nothing-here">404</a>
-      <p>A custom error page, chosen by the configuration.</p>
-    </div>
-    <div class="card">
-      <a href="http://127.0.0.1:8081/">Second server</a>
-      <p>A separate port, served by the same process and the same loop.</p>
-    </div>
-  </div>
+<h1>webserv</h1>
+<p class="sub">An HTTP/1.1 server in C++98. One process, one thread, one
+<code>poll()</code> loop, no external libraries.</p>
 
-  <h2>From the command line</h2>
-  <div class="card">
-    <p style="color:var(--text)">Upload a file, then remove it:</p>
-    <p><code>curl -F "file=@notes.txt" http://127.0.0.1:8080/uploads/</code></p>
-    <p><code>curl -X DELETE http://127.0.0.1:8080/uploads/notes.txt</code></p>
-    <p style="color:var(--text);margin-top:1rem">Send a chunked body:</p>
-    <p><code>curl -H "Transfer-Encoding: chunked" -d @notes.txt http://127.0.0.1:8080/cgi-bin/echo.py</code></p>
-  </div>
+<p>If you are reading this in a browser then the server is running, and this page
+came off the disk through the code in <code>src/</code>. Each link below takes a
+different path through it.</p>
 
-  <footer>webserv &middot; built for the 42 curriculum, then rewritten properly.</footer>
-</main>
+<h2>Things to try</h2>
+
+<dl>
+  <dt><a href="/files/">/files/</a></dt>
+  <dd>A directory with no index file, so the listing is generated.</dd>
+
+  <dt><a href="/docs/">/docs/</a></dt>
+  <dd>Routed with <code>alias</code>, which replaces the matched prefix instead
+      of appending to the root.</dd>
+
+  <dt><a href="/uploads/">/uploads/</a></dt>
+  <dd>Empty until you put something in it. See the commands below.</dd>
+
+  <dt><a href="/cgi-bin/hello.py">/cgi-bin/hello.py</a></dt>
+  <dd>A Python script run through CGI, in a forked child, over pipes.</dd>
+
+  <dt><a href="/cgi-bin/env.py?name=world">/cgi-bin/env.py?name=world</a></dt>
+  <dd>Prints the environment the server hands a script, query string included.</dd>
+
+  <dt><a href="/cgi-bin/status.py?code=418">/cgi-bin/status.py?code=418</a></dt>
+  <dd>The script chooses the status code and the server honours it.</dd>
+
+  <dt><a href="/old-page">/old-page</a></dt>
+  <dd>A 301, configured with <code>return</code>.</dd>
+
+  <dt><a href="/nothing-here">/nothing-here</a></dt>
+  <dd>404, served from the file named by <code>error_page</code>.</dd>
+
+  <dt><a href="http://127.0.0.1:8081/">127.0.0.1:8081</a></dt>
+  <dd>A second server block on another port. Same process, same loop.</dd>
+</dl>
+
+<h2>From a terminal</h2>
+
+<p>Upload a file, fetch it back, then delete it:</p>
+
+<pre>curl -F "file=@notes.txt" http://127.0.0.1:8080/uploads/
+curl http://127.0.0.1:8080/uploads/notes.txt
+curl -X DELETE http://127.0.0.1:8080/uploads/notes.txt</pre>
+
+<p>Send a body in chunks. The server reassembles it before the script sees it,
+because CGI has no way to express chunked input:</p>
+
+<pre>curl -H "Transfer-Encoding: chunked" -d hello \
+     http://127.0.0.1:8080/cgi-bin/echo.py</pre>
+
+<p>Watch what it is doing while you poke at it:</p>
+
+<pre>WEBSERV_LOG=debug ./webserv conf/default.conf</pre>
+
+<h2>Notes</h2>
+
+<p>Requests are parsed incrementally, so one split across many TCP segments costs
+no more than one arriving whole. Responses resume after a partial
+<code>send()</code>. CGI children talk over non-blocking pipes in the same
+<code>poll()</code> set as every socket, and are killed and reaped if they
+overrun their budget. Nothing in the request path blocks.</p>
+
+<p>Configuration lives in <code>conf/default.conf</code>. The routing rules, the
+directives, and what is deliberately not implemented are all in the README.</p>
+
 </body>
 </html>
