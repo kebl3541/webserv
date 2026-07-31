@@ -408,6 +408,36 @@ silently discarded. Repeated headers now keep their order and multiplicity.
 answered 405 with a hardcoded `Allow: GET, HEAD`, which is wrong wherever that
 location also permits `DELETE`. It is derived from the configured set now.
 
+Two more were found later still, by running the server and attacking it rather
+than reading it, which is worth noting on its own: reading found the crashes,
+but only running found these.
+
+**A stalled reader was never reaped.** A client that requested a large file and
+then simply stopped reading held its connection forever.
+
+`enforceTimeouts` saw that the connection was not idle, wrote a 408 over the
+response, and then called `touch()`, which reset the very deadline that was
+supposed to close it. Every expiry handed the peer a fresh 408 and a fresh
+sixty five seconds. Verified: five such connections were still open after
+seventy five seconds against a sixty five second timeout, and the descriptors
+never came back.
+
+This is a slow-drip denial of service from the other direction. Slowloris holds
+connections open by sending slowly; this holds them open by receiving slowly,
+and costs the attacker nothing but an open socket. A connection that times out
+while writing is now closed outright, on the grounds that a peer which has
+stopped reading has nowhere to receive a diagnostic anyway, and the 408 for a
+half-received request deliberately keeps its expired deadline so the following
+pass closes it.
+
+**`Expect: 100-continue` was never answered.** `expectsContinue()` was declared,
+defined, and called from nowhere. A client that sends that header holds its body
+back until the server sends an interim `100 Continue`, so every such upload sat
+waiting out the client's own timeout before it started. The interim reply is now
+queued separately from the response, because it has to be written while the
+connection is still reading, and the poll set asks for writability alongside
+readability until it has drained.
+
 Alongside those, the documentation recorded a set of limitations that were left
 in place deliberately rather than fixed. The most substantial is that
 `resolvePath` normalises lexically and therefore does not follow symlinks, so a
