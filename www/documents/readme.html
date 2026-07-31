@@ -1,12 +1,40 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Alias example</title>
-<style>body{background:#0f1115;color:#e6e8eb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:3rem 1.5rem}main{max-width:40rem;margin:0 auto}a{color:#7aa2f7;text-decoration:none}code{font-family:ui-monospace,Menlo,monospace;color:#9ece6a}</style>
-</head><body><main>
-<h1>Served through an alias</h1>
-<p>The request was for <code>/docs/readme.html</code>. The location block uses
-<code>alias ./www/documents</code>, so the matched prefix was replaced rather
-than appended, and this file came from <code>./www/documents/readme.html</code>.</p>
-<p><a href="/">back to the index</a></p>
-</main></body></html>
+<title>alias routing</title>
+<link rel="stylesheet" href="/files/style.css">
+</head>
+<body>
+<h1>You reached this through an alias</h1>
+
+<p>The address was <code>/docs/readme.html</code>. There is no <code>docs</code>
+directory anywhere on disk. The location block reads:</p>
+
+<pre>location /docs/ {
+    alias ./www/documents;
+}</pre>
+
+<p><code>alias</code> replaces the part of the path that matched the location
+prefix, so <code>/docs/readme.html</code> became
+<code>./www/documents/readme.html</code>. Had the block used <code>root</code>
+instead, the whole path would have been appended and the server would have
+looked for <code>./www/documents/docs/readme.html</code>, which does not
+exist.</p>
+
+<p>That difference is the most common source of confusion in nginx
+configuration, and it is worth being able to state precisely: <code>root</code>
+appends the request path to the root, <code>alias</code> substitutes for the
+matched prefix.</p>
+
+<p>The stylesheet on this page is loaded from
+<a href="/files/style.css">/files/style.css</a>, which is a second request
+through a different location block. If the server were guessing media types
+from content rather than extension, that request would come back as plain text
+and this page would be unstyled.</p>
+
+<p><a href="/docs/">See the rest of this directory</a> &middot;
+   <a href="/">Back to the index</a></p>
+</body>
+</html>

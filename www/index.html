@@ -49,11 +49,14 @@ different path through it.</p>
 
 <dl>
   <dt><a href="/files/">/files/</a></dt>
-  <dd>A directory with no index file, so the listing is generated.</dd>
+  <dd>No index file, so the listing is generated. One file per extension, each
+      served with the media type that extension maps to: fetch
+      <a href="/files/style.css">style.css</a> with <code>curl -i</code> and it
+      is <code>text/css</code>, not <code>text/plain</code>.</dd>
 
   <dt><a href="/docs/">/docs/</a></dt>
-  <dd>Routed with <code>alias</code>, which replaces the matched prefix instead
-      of appending to the root.</dd>
+  <dd>Routed with <code>alias</code>. There is no <code>docs</code> directory on
+      disk; the matched prefix is substituted rather than appended.</dd>
 
   <dt><a href="/uploads/">/uploads/</a></dt>
   <dd>Empty until you put something in it. See the commands below.</dd>
@@ -96,6 +99,11 @@ because CGI has no way to express chunked input:</p>
 <pre>WEBSERV_LOG=debug ./webserv conf/default.conf</pre>
 
 <h2>Notes</h2>
+
+<p>The media type of a response comes from a table of file extensions. Guessing
+it from the first bytes of the file, which is what this server used to do,
+cannot tell CSS from JavaScript from plain text, so stylesheets went out as
+<code>text/plain</code> and browsers refused to apply them.</p>
 
 <p>Requests are parsed incrementally, so one split across many TCP segments costs
 no more than one arriving whole. Responses resume after a partial

@@ -1,0 +1,22 @@
+/* Served as text/css.
+   Sniffing the first bytes of this file cannot distinguish it from plain
+   text, which is why the media type comes from the extension instead. */
+
+:root {
+    --ink: #1a1a1a;
+    --rule: #ddd;
+}
+
+body {
+    max-width: 40em;
+    margin: 3em auto;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+    color: var(--ink);
+}
+
+pre {
+    border-left: 2px solid var(--rule);
+    padding: .7em 1em;
+    overflow-x: auto;
+}

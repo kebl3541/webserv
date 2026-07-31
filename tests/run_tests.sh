@@ -125,11 +125,11 @@ section 'Static files'
 check 'GET / returns 200'                200 "$(status "${BASE}/")"
 check 'GET a missing file returns 404'   404 "$(status "${BASE}/no-such-file")"
 check 'GET /files/ lists the directory'  200 "$(status "${BASE}/files/")"
-check 'GET a file in that listing'       200 "$(status "${BASE}/files/notes.txt")"
+check 'GET a file in that listing'       200 "$(status "${BASE}/files/README.txt")"
 check 'alias routing resolves'           200 "$(status "${BASE}/docs/readme.html")"
 check 'configured redirect returns 301'  301 "$(status "${BASE}/old-page")"
 
-check_contains 'directory listing names its entries' 'notes.txt' \
+check_contains 'directory listing names its entries' 'README.txt' \
 	"$(curl -s --max-time 10 "${BASE}/files/")"
 
 # ---------------------------------------------------------------------------
@@ -138,7 +138,30 @@ section 'MIME types (regression: content was sniffed, not mapped)'
 check_contains 'html is served as text/html' 'text/html' \
 	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/" | tr -d '\r')"
 check_contains 'txt is served as text/plain' 'text/plain' \
-	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/notes.txt" | tr -d '\r')"
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/README.txt" | tr -d '\r')"
+
+# The cases sniffing could never get right, because all three are just text.
+# A stylesheet answered as text/plain is refused by a browser doing strict
+# MIME checking, so this is the difference between a styled page and a bare one.
+check_contains 'css is served as text/css' 'text/css' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/style.css" | tr -d '\r')"
+check_contains 'js is served as javascript' 'javascript' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/script.js" | tr -d '\r')"
+check_contains 'json is served as application/json' 'application/json' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/example.json" | tr -d '\r')"
+check_contains 'svg is served as image/svg+xml' 'image/svg+xml' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/logo.svg" | tr -d '\r')"
+check_contains 'png is served as image/png' 'image/png' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/swatch.png" | tr -d '\r')"
+
+# An unknown extension must fall back to the least specific type rather than
+# guess: a wrong guess is how an uploaded file becomes a script injection.
+check_contains 'an unknown extension falls back to octet-stream' 'application/octet-stream' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/files/unknown.dat" | tr -d '\r')"
+
+# A binary must survive the round trip byte for byte.
+check 'a binary file is served intact' "$(wc -c < "${ROOT}/www/files/swatch.png" | tr -d ' ')" \
+	"$(curl -s --max-time 10 "${BASE}/files/swatch.png" | wc -c | tr -d ' ')"
 
 # ---------------------------------------------------------------------------
 section 'Response headers'
@@ -366,7 +389,7 @@ check 'no zombie children are left behind' 0 "${zombie_count}"
 section 'Connection handling'
 
 # Two requests over one connection: the parser must carry leftover bytes across.
-pipelined="$(raw 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\nGET /files/notes.txt HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n')"
+pipelined="$(raw 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\nGET /files/README.txt HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n')"
 responses="$(printf '%s' "${pipelined}" | grep -c '^HTTP/1.1' || echo 0)"
 if (( responses >= 2 )); then
 	pass 'two pipelined requests receive two responses'

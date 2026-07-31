@@ -1,0 +1,20 @@
+Routing rules, in the order they are applied.
+
+1. The request target is percent-decoded, then normalised. Decoding first is
+   what makes %2e%2e%2f resolve to ../ and be rejected, rather than being
+   waved through as an opaque string.
+
+2. The location whose prefix is the longest match wins, which is the rule
+   nginx uses. A prefix only counts when it ends at a path boundary, so
+   /cgi does not match /cgi-bin/script.py.
+
+3. The method is checked against that location. A method the server does not
+   implement at all is 501; one that is simply not permitted here is 405, and
+   that answer carries an Allow header naming what is.
+
+4. The path is resolved against root or alias, then canonicalised with
+   realpath and checked again, so a symbolic link cannot lead outside the
+   document root.
+
+5. If the location names a cgi_extension and the path ends in it, the request
+   is handed to a child process. Otherwise it is served from disk.

@@ -1,0 +1,7 @@
+Served as application/octet-stream.
+
+There is no entry for the .dat extension in the MIME table, and the fallback
+is deliberately the least specific type there is. Guessing wrongly is worse
+than declining to guess: a browser that trusts a wrong type may render as HTML
+something a user uploaded, which is how a file upload becomes a script
+injection.

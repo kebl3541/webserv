@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="webserv">
+  <title>webserv</title>
+  <rect width="240" height="80" fill="#fff"/>
+  <text x="12" y="34" font-family="Menlo, Consolas, monospace" font-size="20" fill="#1a1a1a">webserv</text>
+  <text x="12" y="56" font-family="Menlo, Consolas, monospace" font-size="11" fill="#666">one thread, one poll() loop</text>
+  <line x1="12" y1="66" x2="228" y2="66" stroke="#ddd" stroke-width="1"/>
+</svg>

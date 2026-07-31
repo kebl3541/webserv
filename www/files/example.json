@@ -1,0 +1,11 @@
+{
+  "served_as": "application/json",
+  "note": "The extension decides the media type, not the contents.",
+  "server": {
+    "language": "C++98",
+    "threads": 1,
+    "multiplexing": "poll",
+    "external_libraries": []
+  },
+  "methods": ["GET", "HEAD", "POST", "DELETE"]
+}
