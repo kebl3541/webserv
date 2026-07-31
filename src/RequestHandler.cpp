@@ -153,7 +153,7 @@ bool	buildAutoIndex(const std::string& directoryPath,
 	html << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
 		 << "  <meta charset=\"utf-8\">\n"
 		 << "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-		 << "  <title>Index of " << uriPath << "</title>\n"
+		 << "  <title>Index of " << Utils::htmlEscape(uriPath) << "</title>\n"
 		 << "  <style>\n"
 		 << "    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n"
 		 << "           background: #0f1115; color: #e6e8eb; margin: 0; padding: 2.5rem 1.5rem; }\n"
@@ -166,13 +166,18 @@ bool	buildAutoIndex(const std::string& directoryPath,
 		 << "    a:hover { text-decoration: underline; }\n"
 		 << "    .dir { color: #9ece6a; }\n"
 		 << "  </style>\n</head>\n<body>\n<main>\n"
-		 << "  <h1>Index of " << uriPath << "</h1>\n  <ul>\n";
+		 << "  <h1>Index of " << Utils::htmlEscape(uriPath) << "</h1>\n  <ul>\n";
 
+	// Entry names come from the filesystem and a file can be named after a
+	// script tag, so the text is HTML-escaped and the href is percent-encoded.
+	// Writing them raw would turn any directory a user can upload into a
+	// stored cross-site scripting vector.
 	for (size_t i = 0; i < directories.size(); ++i)
-		html << "    <li><a class=\"dir\" href=\"" << directories[i] << "\">"
-			 << directories[i] << "</a></li>\n";
+		html << "    <li><a class=\"dir\" href=\"" << Utils::uriEncode(directories[i])
+			 << "\">" << Utils::htmlEscape(directories[i]) << "</a></li>\n";
 	for (size_t i = 0; i < files.size(); ++i)
-		html << "    <li><a href=\"" << files[i] << "\">" << files[i] << "</a></li>\n";
+		html << "    <li><a href=\"" << Utils::uriEncode(files[i]) << "\">"
+			 << Utils::htmlEscape(files[i]) << "</a></li>\n";
 
 	html << "  </ul>\n</main>\n</body>\n</html>\n";
 
@@ -184,6 +189,7 @@ bool	buildAutoIndex(const std::string& directoryPath,
 // Serves a file, or a directory's index file, or a listing.
 static int	serveStatic(const std::string& filesystemPath,
 						const std::string& uriPath,
+						const std::string& query,
 						const LocationConfig& location,
 						HttpResponse& response)
 {
@@ -194,7 +200,12 @@ static int	serveStatic(const std::string& filesystemPath,
 		if (uriPath.empty() || uriPath[uriPath.size() - 1] != '/')
 		{
 			response.setStatus(301);
-			response.setHeader("Location", uriPath + "/");
+			// The query string belongs to the request, not the path, so it has
+			// to survive the redirect or the client silently loses it.
+			std::string	target = Utils::uriEncode(uriPath) + "/";
+			if (!query.empty())
+				target += "?" + query;
+			response.setHeader("Location", target);
 			response.setBody("", "");
 			return 0;
 		}
@@ -350,9 +361,21 @@ Result	route(const HttpRequest& request,
 		if (!location->uploadEnabled)
 		{
 			// POST to a location with nowhere to put the body is a config
-			// mismatch, not a client error the body could fix.
+			// mismatch, not a client error the body could fix. The Allow header
+			// still has to name what this location really permits, which is not
+			// necessarily the read-only pair.
+			std::string	allowed;
+			for (std::set<std::string>::const_iterator it = location->methods.begin();
+				 it != location->methods.end(); ++it)
+			{
+				if (*it == "POST")
+					continue ;
+				if (!allowed.empty())
+					allowed += ", ";
+				allowed += *it;
+			}
 			result.status = 405;
-			result.allowHeader = "GET, HEAD";
+			result.allowHeader = allowed.empty() ? "GET, HEAD" : allowed;
 			return result;
 		}
 
@@ -400,7 +423,8 @@ Result	route(const HttpRequest& request,
 	}
 
 	// --- GET and HEAD ------------------------------------------------------
-	int	status = serveStatic(filesystemPath, request.path(), *location, response);
+	int	status = serveStatic(filesystemPath, request.path(), request.query(),
+		*location, response);
 	if (status != 0)
 		result.status = status;
 	return result;

@@ -281,6 +281,52 @@ bool	pathExists(const std::string& path)
 	return stat(path.c_str(), &info) == 0;
 }
 
+std::string	htmlEscape(const std::string& text)
+{
+	std::string	result;
+
+	result.reserve(text.size());
+	for (size_t i = 0; i < text.size(); ++i)
+	{
+		switch (text[i])
+		{
+			case '&':  result += "&amp;";  break ;
+			case '<':  result += "&lt;";   break ;
+			case '>':  result += "&gt;";   break ;
+			case '"':  result += "&quot;"; break ;
+			case '\'': result += "&#39;";  break ;
+			default:   result += text[i];  break ;
+		}
+	}
+	return result;
+}
+
+std::string	uriEncode(const std::string& text)
+{
+	static const char*	hex = "0123456789ABCDEF";
+	std::string			result;
+
+	result.reserve(text.size());
+	for (size_t i = 0; i < text.size(); ++i)
+	{
+		unsigned char	c = static_cast<unsigned char>(text[i]);
+
+		// The unreserved set from RFC 3986, plus '/' so that path separators
+		// inside a link survive intact.
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+			|| (c >= '0' && c <= '9')
+			|| c == '-' || c == '_' || c == '.' || c == '~' || c == '/')
+			result += static_cast<char>(c);
+		else
+		{
+			result += '%';
+			result += hex[(c >> 4) & 0x0F];
+			result += hex[c & 0x0F];
+		}
+	}
+	return result;
+}
+
 std::string	joinPath(const std::string& left, const std::string& right)
 {
 	if (left.empty())

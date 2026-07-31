@@ -44,9 +44,9 @@ class CgiProcess
 		int		inputFd(void) const;
 		int		outputFd(void) const;
 
-		bool	wantsWrite(void) const;
-
-		// Both return false when the pipe died and the exchange must be torn down.
+		// writeChunk hands over as much of the body as the pipe accepts, closing
+		// stdin once it is all through. readChunk accumulates output and returns
+		// false only when the pipe failed outright.
 		bool	writeChunk(void);
 		bool	readChunk(void);
 

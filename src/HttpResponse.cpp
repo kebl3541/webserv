@@ -32,6 +32,11 @@ void	HttpResponse::setHeader(const std::string& name, const std::string& value)
 	_headers[name] = value;
 }
 
+void	HttpResponse::addHeader(const std::string& name, const std::string& value)
+{
+	_repeatedHeaders.push_back(std::make_pair(name, value));
+}
+
 void	HttpResponse::setBody(const std::string& body, const std::string& contentType)
 {
 	_body = body;
@@ -151,6 +156,10 @@ std::string	HttpResponse::serialise(void) const
 			continue ;
 		message << it->first << ": " << it->second << "\r\n";
 	}
+
+	for (size_t i = 0; i < _repeatedHeaders.size(); ++i)
+		message << _repeatedHeaders[i].first << ": "
+				<< _repeatedHeaders[i].second << "\r\n";
 
 	message << "\r\n";
 

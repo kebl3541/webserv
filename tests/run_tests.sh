@@ -211,6 +211,19 @@ check 'an encoded traversal escape is blocked' 'yes' \
 check_contains 'the passwd file is never served' '' \
 	"$(curl -s --max-time 10 "${BASE}/../../../../etc/passwd" | grep -c 'root:' || true)"
 
+# A filename is attacker-controlled wherever uploads are allowed, so an
+# autoindex listing that writes names raw is a stored cross-site scripting hole.
+xss_name='<img src=x onerror=alert(1)>.txt'
+printf 'x\n' > "${ROOT}/www/files/${xss_name}"
+xss_body="$(curl -s --max-time 10 "${BASE}/files/")"
+rm -f "${ROOT}/www/files/${xss_name}"
+if [[ "${xss_body}" == *"<img src=x"* ]]; then
+	fail 'a filename cannot inject HTML into a listing' 'escaped entities' 'raw tag in output'
+else
+	pass 'a filename cannot inject HTML into a listing'
+fi
+check_contains 'the name is escaped instead' '&lt;img' "${xss_body}"
+
 # ---------------------------------------------------------------------------
 section 'Crash regressions (each of these killed the original server)'
 
@@ -307,6 +320,11 @@ check 'a script Status header is honoured' 418 \
 	"$(status "${BASE}/cgi-bin/status.py?code=418")"
 
 check 'a missing script returns 404' 404 "$(status "${BASE}/cgi-bin/absent.py")"
+
+# Set-Cookie may repeat and must not be collapsed into one value.
+cookie_count="$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/cgi-bin/cookies.py" \
+	| tr -d '\r' | grep -ci '^set-cookie:' || echo 0)"
+check 'both Set-Cookie headers survive' 2 "${cookie_count}"
 
 # The loop must stay responsive while a script is hanging.
 printf '  %s…%s running the CGI timeout test (about 12s)\n' "${GREY}" "${RESET}"

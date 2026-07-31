@@ -3,7 +3,6 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Logger.hpp"
-#include "MimeTypes.hpp"
 #include "Utils.hpp"
 
 #include <sys/stat.h>
@@ -12,6 +11,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <cctype>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -92,11 +92,6 @@ int	CgiProcess::outputFd(void) const{ return _outputFd; }
 pid_t	CgiProcess::pid(void) const	{ return _pid; }
 CgiProcess::State	CgiProcess::state(void) const	{ return _state; }
 int	CgiProcess::status(void) const	{ return _status; }
-
-bool	CgiProcess::wantsWrite(void) const
-{
-	return _inputFd != -1 && _inputOffset < _pendingInput.size();
-}
 
 void	CgiProcess::closeInput(void)
 {
@@ -483,7 +478,10 @@ bool	CgiProcess::buildResponse(HttpResponse& response) const
 	int			statusCode = 200;
 	std::string	contentType;
 	std::string	location;
-	std::map<std::string, std::string>	extraHeaders;
+	// A vector rather than a map: Set-Cookie legitimately repeats, and a map
+	// keyed by header name would silently keep only the last one, dropping
+	// every cookie a script set but the final one.
+	std::vector<std::pair<std::string, std::string> >	extraHeaders;
 
 	std::vector<std::string>	lines = Utils::split(headerBlock, "\n");
 	for (size_t i = 0; i < lines.size(); ++i)
@@ -518,7 +516,7 @@ bool	CgiProcess::buildResponse(HttpResponse& response) const
 			// cannot desynchronise the connection.
 			continue ;
 		else
-			extraHeaders[name] = value;
+			extraHeaders.push_back(std::make_pair(name, value));
 	}
 
 	// A Location header with no explicit Status means a 302 redirect.
@@ -528,9 +526,8 @@ bool	CgiProcess::buildResponse(HttpResponse& response) const
 	response.setStatus(statusCode);
 	if (!location.empty())
 		response.setHeader("Location", location);
-	for (std::map<std::string, std::string>::const_iterator it = extraHeaders.begin();
-		 it != extraHeaders.end(); ++it)
-		response.setHeader(it->first, it->second);
+	for (size_t i = 0; i < extraHeaders.size(); ++i)
+		response.addHeader(extraHeaders[i].first, extraHeaders[i].second);
 
 	response.setBody(body, contentType.empty() ? "text/html; charset=utf-8" : contentType);
 	return true;

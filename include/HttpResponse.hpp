@@ -3,6 +3,8 @@
 
 # include <map>
 # include <string>
+# include <utility>
+# include <vector>
 
 // Builds a well-formed HTTP/1.1 response.
 //
@@ -18,7 +20,13 @@ class HttpResponse
 		void	setStatus(int status);
 		int		status(void) const;
 
+		// Replaces any existing value for this name.
 		void	setHeader(const std::string& name, const std::string& value);
+
+		// Appends a header without replacing an existing one of the same name.
+		// Needed because Set-Cookie is defined to repeat rather than to be
+		// combined into a single comma-separated value the way other headers are.
+		void	addHeader(const std::string& name, const std::string& value);
 		void	setBody(const std::string& body, const std::string& contentType);
 		void	setKeepAlive(bool keepAlive);
 
@@ -37,6 +45,9 @@ class HttpResponse
 	private:
 		int									_status;
 		std::map<std::string, std::string>	_headers;
+		// Headers that may legitimately appear more than once, kept in the order
+		// the script emitted them.
+		std::vector<std::pair<std::string, std::string> >	_repeatedHeaders;
 		std::string							_body;
 		bool								_keepAlive;
 		bool								_headOnly;

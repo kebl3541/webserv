@@ -42,6 +42,15 @@ namespace Utils
 
 	// Joins two path fragments with exactly one separator between them.
 	std::string	joinPath(const std::string& left, const std::string& right);
+
+	// Escapes the five characters that are significant in HTML text and
+	// attributes. Any filename that reaches a generated page must go through
+	// this, since a file can be named after a script tag.
+	std::string	htmlEscape(const std::string& text);
+
+	// Percent-encodes everything outside the unreserved set, so a filename
+	// containing a space, a quote or a hash still produces a usable href.
+	std::string	uriEncode(const std::string& text);
 }
 
 #endif
