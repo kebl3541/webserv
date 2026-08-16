@@ -9,25 +9,28 @@ body = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CGI</title>
-<style>
-  body {{ margin:0; min-height:100vh; display:flex; align-items:center;
-          justify-content:center; background:#0f1115; color:#e6e8eb;
-          font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }}
-  main {{ text-align:center; padding:2rem; }}
-  h1 {{ font-size:2rem; margin:0 0 .5rem; font-weight:600; }}
-  p {{ color:#9aa3ad; margin:.25rem 0; }}
-  code {{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#9ece6a; }}
-  a {{ color:#7aa2f7; text-decoration:none; font-size:.9rem; }}
-</style>
+<title>Hello from CGI - Webserv</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
 </head>
 <body>
-  <main>
-    <h1>Hello from a CGI script</h1>
-    <p>Run by <code>{interpreter}</code> as pid <code>{pid}</code>.</p>
-    <p>Method <code>{method}</code>, query <code>{query}</code>.</p>
-    <p style="margin-top:1.5rem"><a href="/">back to the index</a></p>
-  </main>
+
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+
+<h1>Hello</h1>
+
+<main class="container">
+	<div class="zone wide">
+		<h2>From a Forked Child</h2>
+		<p>Run by <code>{interpreter}</code> as pid <code>{pid}</code>.
+		Method <code>{method}</code>, query <code>{query}</code>.</p>
+		<a href="/">Back to the Beat</a>
+		<a href="/tour/">Take the Tour</a>
+	</div>
+</main>
+
 </body>
 </html>
 """.format(

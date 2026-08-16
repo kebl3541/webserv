@@ -10,6 +10,22 @@ make && ./webserv conf/default.conf
 
 Then open <http://127.0.0.1:8080/>.
 
+## The site
+
+`www/` is the demo site from the original project, kept as it was and made to
+work. Each page exercises a different part of the server rather than describing
+it:
+
+| | |
+|---|---|
+| `/` | The front page. One shared stylesheet, which the original server could not serve at all: it guessed media types from a file's first bytes, and CSS has no magic number, so every stylesheet went out as `text/plain` |
+| `/upload/` | A plain form posting to `/uploads/`. The server parses the multipart body itself |
+| `/cgi-bin/upload.py` | The same upload through CGI, answering in JSON |
+| `/downloads/`, `/delete/` | Both driven by `/cgi-bin/list.py`. The delete page issues a real `DELETE`, which an HTML form cannot do |
+| `/cgi-bin/fortune.py` | A script that chooses its own status code |
+| `/tour/` | The protocol side: autoindex, `alias`, media types, `return 301`, the second port |
+| `/errors/*.html` | One page per status the server can emit, wired up with `error_page` |
+
 ---
 
 ## What it does
@@ -25,7 +41,7 @@ Then open <http://127.0.0.1:8080/>.
 | **Robustness** | Idle and CGI timeouts, body-size limits enforced while streaming, path-traversal rejection, bounded header and connection counts |
 
 Everything is verified by an integration suite that drives the real binary over
-real sockets: `make test` runs 58 cases, and the whole suite also passes under
+real sockets: `make test` runs 104 cases, and the whole suite also passes under
 AddressSanitizer and UndefinedBehaviorSanitizer.
 
 ---

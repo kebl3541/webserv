@@ -354,7 +354,7 @@ The rewrite names the states, so the compiler participates in the argument.
 
 ## What the rewrite is verified against
 
-- 58 integration tests driving the real binary over real sockets.
+- 104 integration tests driving the real binary over real sockets.
 - The same suite under AddressSanitizer and UndefinedBehaviorSanitizer, clean.
 - `-Wall -Wextra -Werror -std=c++98 -pedantic`, no warnings.
 - Builds and runs on macOS and Linux.

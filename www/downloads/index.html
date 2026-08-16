@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download Zone - Webserv</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
+</head>
+<body>
+
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+
+<h1>Download Zone</h1>
+
+<main class="container">
+
+	<div class="zone wide">
+		<h2>Uploaded Goodies</h2>
+		<p>Dive into the zone! Here are your uploaded files, ready to download with
+		a twist.</p>
+		<div class="gallery" id="gallery"></div>
+		<p class="status visible" id="status" role="status" aria-live="polite">Loading the goods...</p>
+		<a href="/upload/">Add Another</a>
+		<a href="/uploads/">Raw Listing</a>
+	</div>
+
+	<div class="zone">
+		<h2>Back to the Beat</h2>
+		<p>Return to the main groove for more action.</p>
+		<a href="/">HIT THE FLOOR</a>
+	</div>
+
+</main>
+
+<script>
+// The gallery in the original was a <div> containing the comment "Dynamic
+// content placeholder: replace with server-generated image list", and nothing
+// ever replaced it. /cgi-bin/list.py is the server-generated list.
+//
+// Names arrive from disk, and a filename is whatever the uploader called it, so
+// nothing here is written with innerHTML. Every name goes in through
+// textContent and every href through the property, which cannot be parsed as
+// markup.
+document.addEventListener('DOMContentLoaded', function () {
+	var gallery = document.getElementById('gallery');
+	var status = document.getElementById('status');
+
+	function readableSize(bytes) {
+		if (bytes < 1024) return bytes + ' B';
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+		return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+	}
+
+	function render(files) {
+		gallery.textContent = '';
+
+		if (!files.length) {
+			status.textContent = 'Nothing here yet. Go upload something.';
+			status.classList.remove('bad');
+			return;
+		}
+
+		files.forEach(function (file) {
+			var figure = document.createElement('figure');
+
+			if (file.image) {
+				var image = document.createElement('img');
+				image.className = 'thumb';
+				image.src = file.url;
+				image.alt = file.name;
+				image.loading = 'lazy';
+				figure.appendChild(image);
+			}
+
+			var caption = document.createElement('figcaption');
+			caption.textContent = file.name + ' (' + readableSize(file.size) + ')';
+			figure.appendChild(caption);
+
+			var link = document.createElement('a');
+			link.href = file.url;
+			link.textContent = 'Grab It';
+			link.setAttribute('download', file.name);
+			figure.appendChild(link);
+
+			gallery.appendChild(figure);
+		});
+
+		status.textContent = files.length + (files.length === 1 ? ' file' : ' files') + ' in the zone.';
+		status.classList.remove('bad');
+	}
+
+	fetch('/cgi-bin/list.py')
+		.then(function (response) {
+			if (!response.ok) throw new Error('Listing failed: ' + response.status);
+			return response.json();
+		})
+		.then(function (data) { render(data.files || []); })
+		.catch(function (error) {
+			status.textContent = error.message;
+			status.classList.add('bad');
+		});
+});
+</script>
+
+</body>
+</html>

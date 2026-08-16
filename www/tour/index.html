@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Under the Hood - Webserv</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
+</head>
+<body>
+
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+
+<h1>Under the Hood</h1>
+
+<main class="container">
+
+	<p class="tagline">One process, one thread, one <code>poll()</code> loop.</p>
+
+	<div class="zone wide">
+		<h2>What This Is</h2>
+		<p>A web server written from scratch in C++98: no libraries and no
+		borrowed parts. One program, one thread, juggling every visitor at once
+		by never stopping to wait for any of them. Every page on this site comes
+		through it, and each claim below tells you how to see it for
+		yourself.</p>
+	</div>
+
+	<div class="zone wide">
+		<h2>The Claims, and the Proof</h2>
+		<dl class="routes">
+
+			<dt>It tells browsers what kind of file it is sending</dt>
+			<dd>Every reply carries a label saying "this is HTML", "this is an
+			image", and so on. The old server guessed the label by peeking at the
+			file's first bytes. Images can be recognised that way, but a
+			stylesheet is just text, so CSS got labelled "plain text" and browsers
+			refused to apply it: the whole site showed up bare. This server looks
+			the label up from the file's extension instead.
+			<a href="/files/">/files/</a> holds one file of each kind to check
+			this with, and the simplest proof is the page you are reading: if the
+			site is red and gold, the labels are right.</dd>
+
+			<dt>It can take in files two different ways</dt>
+			<dd>When you upload a file, the browser wraps it in an envelope
+			format, and someone has to open the envelope. On the
+			<a href="/upload/">Upload Jam</a> page the server opens it itself:
+			it finds the file inside, cleans up the filename so nobody can smuggle
+			in a path like <code>../../secret</code>, and saves it. On the front
+			page's Dynamic Upload, the server instead passes the sealed envelope
+			to a small Python program that opens it. Same file either way; two
+			different parts of the server doing the work.</dd>
+
+			<dt>Deleting is a real request, not a trick</dt>
+			<dd>Web requests come in kinds: GET fetches a page, POST sends data,
+			DELETE removes something. A plain HTML form can only send the first
+			two, which is why the original site's delete page never worked, its
+			form was shouting into a void. The <a href="/delete/">Delete Zone</a>
+			uses a line of JavaScript to send an actual DELETE, and the server
+			removes the file and answers "done". Watch
+			<a href="/uploads/">/uploads/</a> shrink to match.</dd>
+
+			<dt>A stuck script cannot freeze the site</dt>
+			<dd>Dynamic pages, the fortune, the uploads listing, are separate
+			little programs the server starts on demand. If one hangs forever,
+			the server gives it a deadline, kills it when the deadline passes, and
+			answers with an error page, while every other visitor sails on
+			unaffected. <a href="/cgi-bin/env.py">env.py</a> shows the information
+			a script is handed;
+			<a href="/cgi-bin/status.py?code=418">status.py</a> shows a script
+			choosing its own response code and the server respecting it.</dd>
+
+			<dt>It does not eat cookies</dt>
+			<dd>A reply can set several cookies, one header line each, and those
+			lines must not be squashed together. The easy way to store headers,
+			one slot per header name, keeps only the last line, so one cookie
+			silently vanishes; that was a real bug here once. The
+			<a href="/cookies/">Cookie Jar</a> fetches a script that sets two
+			cookies and shows both made the trip.</dd>
+
+			<dt>Where things live is settings, not code</dt>
+			<dd>One configuration file decides which folders are served, what is
+			forbidden, where old links redirect, and which page a visitor sees on
+			an error. <a href="/docs/">/docs/</a> is a folder that does not exist
+			under that name on disk, the config maps it;
+			<a href="/old-page">/old-page</a> forwards you home because one line
+			says so; <a href="/nothing-here">/nothing-here</a> shows the themed
+			404 page the config names. Even
+			<a href="http://127.0.0.1:8081/">port 8081</a> is just a second block
+			in the same file, served by the same single process.</dd>
+
+		</dl>
+	</div>
+
+	<div class="zone wide">
+		<h2>From a Terminal</h2>
+
+		<p>Upload a file, fetch it back, then delete it:</p>
+<pre>curl -F "file=@notes.txt" http://127.0.0.1:8080/uploads/
+curl http://127.0.0.1:8080/uploads/notes.txt
+curl -X DELETE http://127.0.0.1:8080/uploads/notes.txt</pre>
+
+		<p>Send a body in chunks; the server reassembles it before the script sees
+		it, because CGI has no way to express chunked input:</p>
+<pre>curl -H "Transfer-Encoding: chunked" -d hello \
+     http://127.0.0.1:8080/cgi-bin/echo.py</pre>
+
+		<p>Watch it work while you poke at it:</p>
+<pre>WEBSERV_LOG=debug ./webserv conf/default.conf</pre>
+	</div>
+
+	<div class="zone wide">
+		<h2>Fine Print</h2>
+
+		<p>A request that trickles in over fifty network packets costs no more to
+		read than one arriving whole, and a reply interrupted halfway picks up
+		where it left off. The full routing rules and the deliberate limits are
+		in the README; the audit of the original implementation, every bug with
+		its cause, is in AUDIT.md.</p>
+	</div>
+
+	<div class="zone">
+		<h2>Back to the Beat</h2>
+		<a href="/">HIT THE FLOOR</a>
+	</div>
+
+</main>
+
+</body>
+</html>

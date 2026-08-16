@@ -421,13 +421,29 @@ Result	route(const HttpRequest& request,
 			return result;
 		}
 
+		// The names in this list came off the wire: whoever uploads the file
+		// chooses what it is called. sanitiseFilename() already drops '<' and
+		// '>', so nothing here can currently close a tag, but a page that is
+		// safe only because of a filter somewhere else is safe by luck. The
+		// listing at /files/ escapes for this reason and this page was missed.
 		std::ostringstream	html;
-		html << "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
-			 << "<title>Upload complete</title></head><body>\n"
-			 << "<h1>Upload complete</h1>\n<ul>\n";
+		html << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+			 << "<meta charset=\"utf-8\">\n"
+			 << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+			 << "<title>Upload complete</title>\n"
+			 << "<link rel=\"stylesheet\" href=\"/assets/site.css\">\n"
+			 << "</head>\n<body>\n"
+			 << "<h1>Upload Success</h1>\n"
+			 << "<main class=\"container\">\n<div class=\"zone wide\">\n"
+			 << "<h2>Blasted Into the Digital Cosmos</h2>\n<ul class=\"listing\">\n";
 		for (size_t i = 0; i < stored.size(); ++i)
-			html << "  <li>" << stored[i] << "</li>\n";
-		html << "</ul>\n</body></html>\n";
+			html << "  <li><span class=\"name\">" << Utils::htmlEscape(stored[i])
+				 << "</span><a href=\"" << Utils::uriEncode(stored[i]) << "\">View</a></li>\n";
+		html << "</ul>\n"
+			 << "<a href=\"/downloads/\">Download Zone</a>\n"
+			 << "<a href=\"/upload/\">Upload Another</a>\n"
+			 << "<a href=\"/\">Back to the Beat</a>\n"
+			 << "</div>\n</main>\n</body>\n</html>\n";
 
 		response.setStatus(201);
 		response.setBody(html.str(), "text/html; charset=utf-8");

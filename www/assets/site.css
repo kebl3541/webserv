@@ -1,0 +1,418 @@
+/* webserv site theme
+ *
+ * Every page in the original site carried its own copy of this, inline, in a
+ * <style> block. Two hundred lines duplicated eleven times, which is why the
+ * pages had drifted apart: the same class meant different things depending on
+ * which file you opened.
+ *
+ * It lives in one file now, which the original server could not have served.
+ * It guessed a media type from the first bytes of a file, and nothing in CSS
+ * has a magic number, so a stylesheet went out as text/plain and the browser
+ * declined to apply it. Extensions map to types from a table now, so if this
+ * page has colour then that table is working. Load it with `curl -i` and the
+ * Content-Type is text/css.
+ */
+
+:root {
+	--red-deep:   #990000;
+	--red:        #cc0000;
+	--red-bright: #ff3333;
+	--red-light:  #ff6666;
+	--gold:       #ffcc00;
+	--orange:     #ff6600;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	font-family: 'Courier New', Courier, monospace;
+	background: linear-gradient(45deg, var(--red), var(--red-bright), var(--red-deep), var(--red-light));
+	background-size: 400% 400%;
+	animation: fadeBackground 10s ease-in-out infinite;
+	color: var(--gold);
+	overflow-x: hidden;
+	position: relative;
+}
+
+/* No shared perspective here, deliberately; each card carries its own.
+ *
+ * The original put `perspective` on body with `preserve-3d` on this container
+ * and rotated the cards two levels down, which broke hit-testing outright:
+ * cards were painted through one 3D space and hit-tested through another, and
+ * every button inside a card was dead.
+ *
+ * A single perspective on this container fixes the hit-testing but plants the
+ * vanishing point at the container's centre, and a projection is relative to
+ * its perspective origin: a tilted card far below the centre has its near half
+ * displaced downward by tens of pixels, and any hover transform that removes
+ * the tilt snaps that displacement away, sliding the card out from under a
+ * stationary cursor and back again, for ever. That is the shiver, and it gets
+ * worse the further a card sits from the middle of the page. */
+.container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 10px 20px 40px;
+	position: relative;
+	z-index: 1;
+}
+
+h1 {
+	font-size: clamp(32px, 9vw, 60px);
+	text-transform: uppercase;
+	letter-spacing: .15em;
+	text-align: center;
+	animation: glow3D 2s infinite ease-in-out;
+	text-shadow: 0 0 20px var(--red-bright), 0 0 40px var(--red-light);
+	margin: 40px 0 10px;
+	transform: translateZ(30px);
+	position: relative;
+	z-index: 2;
+}
+
+h2 {
+	font-size: clamp(18px, 4vw, 24px);
+	margin: 0 0 15px;
+	text-shadow: 0 0 10px var(--red-bright);
+}
+
+.tagline {
+	font-size: clamp(16px, 3vw, 20px);
+	font-weight: bold;
+	letter-spacing: .5px;
+	text-shadow: 0 0 25px var(--red-bright);
+	margin: 20px;
+	text-align: center;
+}
+
+/* A card. Rotated away from the reader until pointed at.
+ *
+ * The original cards were rgba(255, 51, 0, .8), which put gold text on bright
+ * orange at roughly 2:1 contrast and left every paragraph a guess. Same palette,
+ * darker card: the text passes now and the look does not change. */
+.zone {
+	background: rgba(110, 4, 0, .88);
+	padding: 20px;
+	border: 3px solid var(--gold);
+	border-radius: 20px;
+	width: 100%;
+	max-width: 600px;
+	margin-bottom: 20px;
+	transform: perspective(1000px) rotateY(6deg);
+	transition: transform .5s, box-shadow .5s;
+}
+
+/* Hover may move the card, but only outward: a hover transform that pulls any
+ * edge away from the pointer lets the card exit its own hover state, snap
+ * back, re-enter it, and shiver under a stationary cursor.
+ *
+ * `perspective()` in the card's own transform makes that a local guarantee.
+ * The projection is now about the card's centre wherever the card sits on the
+ * page, so a 6deg tilt pushes the near edge out by about 3%, bounded by the
+ * card's own size, and the 5% hover scale outgrows it in every direction.
+ * Straighten, swell, glow; entered hover cannot be left without the pointer
+ * moving, at the top of the page or the bottom. */
+.zone:hover, .zone:focus-within {
+	transform: perspective(1000px) rotateY(0deg) scale(1.05);
+	box-shadow: 0 0 30px var(--red-bright);
+}
+
+/* Cards that carry prose rather than a link or two. A rotated layer is
+ * rasterised once and then resampled, which is fine over four words on a
+ * button and turns a paragraph to mush. The tilt is an accent for the menu on
+ * the front page; anything you actually have to read sits square. */
+.zone.wide {
+	max-width: 700px;
+	transform: none;
+}
+
+/* Headings glow, body text does not. A 10px red glow behind every paragraph,
+ * which is what the original did, is a blur filter applied to the thing you are
+ * trying to read. */
+.zone p { font-size: 16px; line-height: 1.6; text-shadow: none; }
+
+a, button, .btn, input[type="submit"] {
+	color: var(--gold);
+	background: transparent;
+	border: 2px solid var(--gold);
+	padding: 10px 20px;
+	border-radius: 10px;
+	text-decoration: none;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all .3s;
+	font-size: 16px;
+	font-family: 'Courier New', Courier, monospace;
+	display: inline-block;
+	margin: 0 10px 10px 0;
+}
+
+a:hover, button:hover, .btn:hover, input[type="submit"]:hover,
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+	background: var(--gold);
+	color: var(--red);
+	transform: scale(1.1) rotateX(10deg);
+	box-shadow: 0 0 20px var(--gold);
+	outline: none;
+}
+
+/* A link inside a sentence is a link, not a button. Without this every "fetch
+ * style.css with curl" grows a border and a 10px pad, and the line it sits in
+ * comes apart. */
+p a, .routes dd a, figcaption a {
+	border: none;
+	background: none;
+	padding: 0;
+	margin: 0;
+	display: inline;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+p a:hover, .routes dd a:hover, figcaption a:hover {
+	background: none;
+	color: #fff0a0;
+	transform: none;
+	box-shadow: none;
+}
+
+/* The file picker. A bare <input type=file> cannot be styled, so the real one
+ * is made transparent and stretched over a label that can be. */
+.custom-file-input {
+	position: relative;
+	overflow: hidden;
+	display: inline-block;
+	margin: 0 10px 10px 0;
+	color: var(--gold);
+	background: transparent;
+	border: 2px solid var(--gold);
+	padding: 10px 20px;
+	border-radius: 10px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all .3s;
+	text-align: center;
+}
+
+.custom-file-input input[type="file"] {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	width: 100%;
+	height: 100%;
+	cursor: pointer;
+}
+
+.custom-file-input label { display: block; margin: 0; padding: 0; cursor: pointer; }
+
+.custom-file-input:hover, .custom-file-input:focus-within {
+	background: var(--gold);
+	color: var(--red);
+	box-shadow: 0 0 20px var(--gold);
+}
+
+.upload-form { display: flex; flex-wrap: wrap; align-items: center; }
+
+input[type="text"] {
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 16px;
+	padding: 10px;
+	border: 2px solid var(--gold);
+	border-radius: 10px;
+	background: rgba(153, 0, 0, .6);
+	color: var(--gold);
+	margin: 0 10px 10px 0;
+	min-width: 14em;
+}
+
+input[type="text"]::placeholder { color: rgba(255, 204, 0, .55); }
+
+label.field { display: block; margin-bottom: 8px; }
+
+/* Status line under a form. Hidden until there is something to say, and it is
+ * an aria-live region so a screen reader hears the result of the upload. */
+.status {
+	display: none;
+	font-size: 16px;
+	line-height: 1.5;
+	text-shadow: 0 0 5px var(--red-bright);
+	margin-top: 15px;
+}
+
+.status.visible { display: block; }
+.status.bad { color: #fff0a0; }
+
+/* A listing of what is in the upload directory. Filled in by fetch(). */
+.listing { list-style: none; margin: 15px 0 0; padding: 0; }
+
+.listing li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 0;
+	border-top: 1px dashed rgba(255, 204, 0, .5);
+}
+
+.listing .name { flex: 1 1 12em; word-break: break-all; }
+.listing .size { opacity: .8; font-size: 14px; }
+.listing a, .listing button { padding: 6px 12px; font-size: 14px; margin: 0; }
+
+.empty { opacity: .85; font-style: italic; }
+
+.thumb {
+	max-width: 100%;
+	max-height: 140px;
+	border: 2px solid var(--gold);
+	border-radius: 8px;
+	display: block;
+	margin-bottom: 8px;
+}
+
+.gallery {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 15px;
+	margin-top: 15px;
+}
+
+.gallery figure {
+	margin: 0;
+	padding: 10px;
+	border: 2px solid var(--gold);
+	border-radius: 12px;
+	background: rgba(153, 0, 0, .45);
+	text-align: center;
+}
+
+.gallery figcaption { font-size: 13px; word-break: break-all; margin-bottom: 8px; }
+
+.note {
+	max-width: 600px;
+	font-size: 14px;
+	line-height: 1.6;
+	opacity: .9;
+	text-align: center;
+	margin-top: 10px;
+}
+
+code {
+	font-family: 'Courier New', Courier, monospace;
+	background: rgba(153, 0, 0, .6);
+	padding: 1px 5px;
+	border-radius: 4px;
+}
+
+pre {
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 14px;
+	line-height: 1.5;
+	background: rgba(102, 0, 0, .75);
+	border-left: 3px solid var(--gold);
+	border-radius: 6px;
+	padding: 12px 14px;
+	overflow-x: auto;
+	white-space: pre;
+}
+
+pre code { background: none; padding: 0; }
+
+/* Definition lists on the tour page: a route, then what it demonstrates. */
+.routes { margin: 0; }
+.routes dt { margin-top: 16px; font-weight: bold; }
+.routes dt:first-child { margin-top: 0; }
+.routes dt a { margin: 0; padding: 4px 10px; font-size: 15px; }
+.routes dd { margin: 8px 0 0; font-size: 15px; line-height: 1.6; }
+
+/* Floating blobs. Purely decorative, so hidden from the accessibility tree. */
+.bg-anim {
+	position: absolute;
+	background: rgba(255, 51, 0, .5);
+	border-radius: 50%;
+	animation: float3D 6s infinite ease-in-out;
+	z-index: 0;
+	pointer-events: none;
+}
+
+.bg-anim:nth-of-type(1)  { width: 100px; height: 100px; top:  5%; left: 10%; animation-delay: 0s; }
+.bg-anim:nth-of-type(2)  { width:  80px; height:  80px; top: 20%; right: 15%; animation-delay: 1s; }
+.bg-anim:nth-of-type(3)  { width: 120px; height: 120px; bottom: 30%; left: 25%; animation-delay: 2s; }
+.bg-anim:nth-of-type(4)  { width:  60px; height:  60px; bottom: 10%; right: 20%; animation-delay: 3s; }
+.bg-anim:nth-of-type(5)  { width:  90px; height:  90px; top: 40%; left: 40%; animation-delay: 4s; }
+.bg-anim:nth-of-type(6)  { width: 110px; height: 110px; bottom: 20%; right: 35%; animation-delay: 5s; }
+.bg-anim:nth-of-type(7)  { width:  70px; height:  70px; top: 15%; left: 60%; animation-delay: .5s; }
+.bg-anim:nth-of-type(8)  { width: 130px; height: 110px; bottom: 40%; right: 10%; animation-delay: 1.5s; }
+.bg-anim:nth-of-type(9)  { width:  85px; height:  85px; top: 50%; left: 20%; animation-delay: 2.5s; }
+.bg-anim:nth-of-type(10) { width:  95px; height:  95px; bottom: 5%; left: 45%; animation-delay: 3.5s; }
+
+/* Error pages: one card, centred, skewed. */
+.error-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+
+.error {
+	transform: skew(-10deg);
+	padding: clamp(24px, 6vw, 50px);
+	border: 4px solid var(--orange);
+	animation: glitch .5s infinite;
+	text-align: center;
+	background: rgba(153, 0, 0, .55);
+	position: relative;
+	z-index: 1;
+}
+
+.error h1 {
+	font-size: clamp(48px, 15vw, 80px);
+	margin: 0;
+	letter-spacing: normal;
+	animation: flicker .12s infinite;
+	transform: none;
+}
+
+.error p { font-size: clamp(16px, 4vw, 24px); margin: 15px 0; }
+.error a { border-color: var(--orange); color: var(--orange); }
+.error a:hover { background: var(--orange); color: var(--red); }
+
+.footer-nav { margin-top: 10px; text-align: center; }
+
+@keyframes fadeBackground {
+	0%   { background-position: 0% 0%; }
+	50%  { background-position: 100% 100%; }
+	100% { background-position: 0% 0%; }
+}
+
+@keyframes glow3D {
+	0%   { transform: translateZ(30px) scale(1);    text-shadow: 0 0 20px var(--red-bright), 0 0 40px var(--red-light); }
+	50%  { transform: translateZ(50px) scale(1.05); text-shadow: 0 0 30px var(--red-bright), 0 0 60px var(--red-light); }
+	100% { transform: translateZ(30px) scale(1);    text-shadow: 0 0 20px var(--red-bright), 0 0 40px var(--red-light); }
+}
+
+@keyframes float3D {
+	0%   { transform: translateZ(0) translate(0, 0); }
+	50%  { transform: translateZ(100px) translate(50px, 50px); }
+	100% { transform: translateZ(0) translate(0, 0); }
+}
+
+@keyframes glitch {
+	0%   { transform: skew(-10deg) translate(0, 0); }
+	50%  { transform: skew(10deg) translate(5px, -5px); }
+	100% { transform: skew(-10deg) translate(0, 0); }
+}
+
+@keyframes flicker {
+	0%   { opacity: 1; }
+	50%  { opacity: .8; }
+	100% { opacity: 1; }
+}
+
+/* Every animation here loops forever, which for some readers is not a style
+ * choice but a headache. Honour the system setting. */
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		animation: none !important;
+		transition: none !important;
+	}
+	.zone, .zone:hover, .zone:focus-within { transform: none; }
+	h1 { transform: none; }
+	.error { transform: skew(-10deg); }
+}

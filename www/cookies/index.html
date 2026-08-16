@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookie Jar - Webserv</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
+</head>
+<body>
+
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+
+<h1>Cookie Jar</h1>
+
+<main class="container">
+
+	<div class="zone wide">
+		<h2>Two Cookies, One Response</h2>
+		<p>The jar takes two at a time. Grab them both.</p>
+
+		<button type="button" id="fetch-cookies">Get the Cookies</button>
+		<button type="button" id="clear-cookies">Eat Them</button>
+
+		<p class="status" id="status" role="status" aria-live="polite"></p>
+		<ul class="listing" id="jar"></ul>
+	</div>
+
+	<div class="zone wide">
+		<h2>The Round Trip</h2>
+		<p>They come back with every request. Watch them land on the far side at
+		<a href="/cgi-bin/env.py">env.py</a>.</p>
+	</div>
+
+	<div class="zone">
+		<h2>Back to the Beat</h2>
+		<a href="/">HIT THE FLOOR</a>
+	</div>
+
+</main>
+
+<script>
+// The demo is deliberately end-to-end: the script sets the cookies over CGI,
+// the browser stores them, and document.cookie is what actually arrived. If the
+// server were still collapsing headers into a map, this page would show one
+// cookie, not a missing header somewhere in a terminal.
+document.addEventListener('DOMContentLoaded', function () {
+	var status = document.getElementById('status');
+	var jar = document.getElementById('jar');
+
+	function say(text, bad) {
+		status.textContent = text;
+		status.classList.add('visible');
+		status.classList.toggle('bad', !!bad);
+	}
+
+	function renderJar() {
+		jar.textContent = '';
+		var pairs = document.cookie ? document.cookie.split('; ') : [];
+		pairs.forEach(function (pair) {
+			var row = document.createElement('li');
+			var name = document.createElement('span');
+			name.className = 'name';
+			name.textContent = pair;
+			row.appendChild(name);
+			jar.appendChild(row);
+		});
+		return pairs;
+	}
+
+	document.getElementById('fetch-cookies').addEventListener('click', function () {
+		fetch('/cgi-bin/cookies.py')
+			.then(function (response) {
+				if (!response.ok) throw new Error('Server said ' + response.status);
+				return response.text();
+			})
+			.then(function () {
+				var pairs = renderJar();
+				var gotFirst = pairs.some(function (p) { return p.indexOf('first=') === 0; });
+				var gotSecond = pairs.some(function (p) { return p.indexOf('second=') === 0; });
+				if (gotFirst && gotSecond)
+					say('Both cookies arrived. Verdict: you will crush this interview, and nothing will crash it.');
+				else if (gotFirst || gotSecond)
+					say('Only one cookie arrived. The server is eating Set-Cookie headers again.', true);
+				else
+					say('No cookies arrived at all. Check the response with curl -i.', true);
+			})
+			.catch(function (error) { say(error.message, true); });
+	});
+
+	document.getElementById('clear-cookies').addEventListener('click', function () {
+		['first', 'second'].forEach(function (name) {
+			document.cookie = name + '=; Path=/; Max-Age=0';
+		});
+		renderJar();
+		say('Jar emptied.');
+	});
+
+	renderJar();
+});
+</script>
+
+</body>
+</html>

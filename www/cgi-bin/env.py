@@ -8,7 +8,7 @@ import sys
 rows = []
 for name in sorted(os.environ):
     rows.append(
-        "<tr><td>{}</td><td>{}</td></tr>".format(
+        "\t\t\t<tr><td>{}</td><td>{}</td></tr>".format(
             html.escape(name), html.escape(os.environ[name])
         )
     )
@@ -18,31 +18,44 @@ body = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CGI environment</title>
+<title>CGI Environment - Webserv</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
 <style>
-  body {{ background:#0f1115; color:#e6e8eb; margin:0; padding:3rem 1.5rem;
-          font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.85rem; }}
-  main {{ max-width:60rem; margin:0 auto; }}
-  h1 {{ font-size:1.1rem; color:#9aa3ad; font-weight:600;
-        border-bottom:1px solid #252932; padding-bottom:.75rem; }}
-  div.scroll {{ overflow-x:auto; }}
-  table {{ border-collapse:collapse; width:100%; }}
-  td {{ padding:.4rem .75rem; border-bottom:1px solid #1c2029; vertical-align:top; }}
-  td:first-child {{ color:#9ece6a; white-space:nowrap; }}
-  td:last-child {{ color:#e6e8eb; word-break:break-all; }}
-  a {{ color:#7aa2f7; text-decoration:none; }}
+  .scroll {{ overflow-x: auto; }}
+  table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
+  td {{ padding: 6px 10px; border-bottom: 1px dashed rgba(255, 204, 0, .4);
+        vertical-align: top; text-align: left; }}
+  td:first-child {{ white-space: nowrap; font-weight: bold; }}
+  td:last-child {{ word-break: break-all; }}
 </style>
 </head>
 <body>
-<main>
-  <h1>CGI environment</h1>
-  <div class="scroll"><table>{rows}</table></div>
-  <p style="margin-top:2rem"><a href="/">back to the index</a></p>
+
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+
+<h1>The Env</h1>
+
+<main class="container">
+	<div class="zone wide">
+		<h2>What the Server Hands a Script</h2>
+		<div class="scroll">
+		<table>
+{rows}
+		</table>
+		</div>
+		<p style="margin-top:15px"><a href="/">Back to the Beat</a>
+		<a href="/cookies/">Cookie Jar</a></p>
+	</div>
 </main>
+
 </body>
 </html>
 """.format(rows="\n".join(rows))
 
 sys.stdout.write("Content-Type: text/html; charset=utf-8\r\n")
+sys.stdout.write("Cache-Control: no-store\r\n")
 sys.stdout.write("\r\n")
 sys.stdout.write(body)

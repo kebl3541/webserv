@@ -339,7 +339,7 @@ check 'a POST with no Content-Length returns 411' 411 \
 section 'CGI'
 
 check 'a CGI script runs'              200 "$(status "${BASE}/cgi-bin/hello.py")"
-check_contains 'its output is returned' 'Hello from a CGI script' \
+check_contains 'its output is returned' 'From a Forked Child' \
 	"$(curl -s --max-time 10 "${BASE}/cgi-bin/hello.py")"
 
 check_contains 'QUERY_STRING reaches the script' 'name=world' \
@@ -444,6 +444,72 @@ check 'a 2 MiB response is delivered whole' "${expected_size}" "${actual_size}"
 rm -f "${ROOT}/www/files/large.bin"
 
 # ---------------------------------------------------------------------------
+section 'The site'
+
+# Every page is one document plus one shared stylesheet. If the extension table
+# regresses, the stylesheet goes out as text/plain, the browser drops it, and
+# the whole site renders unstyled: the earlier /files/style.css case catches the
+# table, this one catches the file the site actually depends on.
+check 'the stylesheet is served'        200 "$(status "${BASE}/assets/site.css")"
+check_contains 'as text/css' 'Content-Type: text/css' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/assets/site.css" | tr -d '\r')"
+
+for page in / /about/ /upload/ /downloads/ /delete/ /cookies/ /tour/ /success/delete.html; do
+	check "GET ${page} returns 200" 200 "$(status "${BASE}${page}")"
+done
+
+check_contains 'the front page is the site index' 'Here to serve.' \
+	"$(curl -s --max-time 10 "${BASE}/")"
+
+# error_page points at real files, so a failure keeps the site's own look.
+check_contains '404 serves the configured page' 'Page Lost in the Red Void' \
+	"$(curl -s --max-time 10 "${BASE}/nothing-here")"
+check_contains '405 serves the configured page' 'Wrong Dance Move' \
+	"$(curl -s --max-time 10 -X DELETE "${BASE}/index.html")"
+
+# The CGI round trip the Download and Delete zones are built on: upload through
+# the script, see it in the listing, fetch it, delete it, see it gone.
+cgi_upload_body="$(mktemp -t webserv-cgi.XXXXXX)"
+printf 'jazz\n' > "${cgi_upload_body}"
+cgi_name="cgi-upload-test.txt"
+rm -f "${ROOT}/www/uploads/${cgi_name}"
+
+check 'a CGI upload returns 201' 201 \
+	"$(status -F "file=@${cgi_upload_body};filename=${cgi_name}" "${BASE}/cgi-bin/upload.py")"
+check_contains 'the listing script reports it' "${cgi_name}" \
+	"$(curl -s --max-time 10 "${BASE}/cgi-bin/list.py")"
+check_contains 'the listing script answers JSON' 'application/json' \
+	"$(curl -s -D- -o /dev/null --max-time 10 "${BASE}/cgi-bin/list.py" | tr -d '\r')"
+check 'the uploaded file is then served' 200 "$(status "${BASE}/uploads/${cgi_name}")"
+check 'uploading it twice is a 409' 409 \
+	"$(status -F "file=@${cgi_upload_body};filename=${cgi_name}" "${BASE}/cgi-bin/upload.py")"
+check 'the Delete Zone request removes it' 204 \
+	"$(status -X DELETE "${BASE}/uploads/${cgi_name}")"
+check 'and the listing no longer reports it' '' \
+	"$(curl -s --max-time 10 "${BASE}/cgi-bin/list.py" | grep -o "${cgi_name}" | head -1)"
+
+# The same malformed Content-Type that crashed the original server, aimed at the
+# script this time: it has to refuse it rather than write the envelope to disk.
+check 'the CGI upload refuses a body with no boundary' 400 \
+	"$(status -X POST -H 'Content-Type: multipart/form-data' --data-binary 'x' \
+		"${BASE}/cgi-bin/upload.py")"
+# A filename is reduced to its last component, so a traversal is stored inside
+# the upload directory under a harmless name rather than above it.
+check 'a traversal filename is flattened, not honoured' 201 \
+	"$(status -F "file=@${cgi_upload_body};filename=../../escaped.txt" "${BASE}/cgi-bin/upload.py")"
+check 'nothing escaped the upload directory' 'no' \
+	"$([[ -e "${ROOT}/www/escaped.txt" || -e "${ROOT}/escaped.txt" ]] && echo yes || echo no)"
+check 'it landed inside it instead' 'yes' \
+	"$([[ -e "${ROOT}/www/uploads/escaped.txt" ]] && echo yes || echo no)"
+check 'a filename of shell metacharacters is refused' 400 \
+	"$(status -F "file=@${cgi_upload_body};filename=\$(id)&.txt" "${BASE}/cgi-bin/upload.py")"
+# A repeat run finds escaped.txt already there and stores escaped-1.txt instead,
+# so clear the suffixed variants too rather than leaving a trail behind.
+rm -f "${cgi_upload_body}" "${ROOT}"/www/uploads/escaped*.txt
+
+check 'the fortune script answers' 200 "$(status "${BASE}/cgi-bin/fortune.py")"
+
+# ---------------------------------------------------------------------------
 section 'Second server'
 
 # A host name that resolves to both families must be served on both. Binding
@@ -459,8 +525,14 @@ fi
 check 'the IPv4 loopback address is served' 200 "$(status -4 "http://127.0.0.1:${PORT}/")"
 
 check 'the second port answers'   200 "$(status "http://${HOST}:${PORT2}/")"
-check_contains 'with its own root' 'The second server' \
+check_contains 'with its own root' 'Second Stage' \
 	"$(curl -s --max-time 10 "http://${HOST}:${PORT2}/")"
+
+# That server has no assets directory. Its /assets/ location overrides the
+# server root and reaches into the other site's, which is the difference between
+# root and alias in one request.
+check 'a location root outside the server root resolves' 200 \
+	"$(status "http://${HOST}:${PORT2}/assets/site.css")"
 
 # ---------------------------------------------------------------------------
 section 'Stalled peers'

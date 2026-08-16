@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete Zone - Webserv</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
+</head>
+<body>
+
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+
+<h1>Delete Zone</h1>
+
+<main class="container">
+
+	<div class="zone wide">
+		<h2>Trash These Goodies</h2>
+		<p>Clear the zone! Pick the files you want to zap away.</p>
+		<ul class="listing" id="listing"></ul>
+		<p class="status visible" id="status" role="status" aria-live="polite">Loading the goods...</p>
+	</div>
+
+	<div class="zone wide">
+		<h2>Or Name It Yourself</h2>
+		<form id="by-name">
+			<label class="field" for="file-name">Enter file name to delete:</label>
+			<input type="text" id="file-name" name="file-name" placeholder="Enter file name" required>
+			<button type="submit">Submit</button>
+		</form>
+	</div>
+
+	<div class="zone">
+		<h2>Back to the Beat</h2>
+		<p>Return to the main groove for more action.</p>
+		<a href="/">HIT THE FLOOR</a>
+		<a href="/downloads/">Download Zone</a>
+	</div>
+
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+	var listing = document.getElementById('listing');
+	var status = document.getElementById('status');
+	var byName = document.getElementById('by-name');
+	var nameField = document.getElementById('file-name');
+
+	function say(text, bad) {
+		status.textContent = text;
+		status.classList.add('visible');
+		status.classList.toggle('bad', !!bad);
+	}
+
+	function readableSize(bytes) {
+		if (bytes < 1024) return bytes + ' B';
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+		return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+	}
+
+	// Filenames are attacker-controlled: whoever uploads picks the name. They go
+	// into the page through textContent, never innerHTML, so a name is text and
+	// stays text. The server escapes them in its own generated listings for the
+	// same reason.
+	function render(files) {
+		listing.textContent = '';
+
+		if (!files.length) {
+			say('Nothing left to zap.');
+			return;
+		}
+
+		files.forEach(function (file) {
+			var row = document.createElement('li');
+
+			var name = document.createElement('span');
+			name.className = 'name';
+			name.textContent = file.name;
+			row.appendChild(name);
+
+			var size = document.createElement('span');
+			size.className = 'size';
+			size.textContent = readableSize(file.size);
+			row.appendChild(size);
+
+			var view = document.createElement('a');
+			view.href = file.url;
+			view.textContent = 'View';
+			row.appendChild(view);
+
+			var zap = document.createElement('button');
+			zap.type = 'button';
+			zap.textContent = 'Zap';
+			zap.addEventListener('click', function () { remove(file.name); });
+			row.appendChild(zap);
+
+			listing.appendChild(row);
+		});
+
+		say(files.length + (files.length === 1 ? ' file' : ' files') + ' on the floor.');
+	}
+
+	function load() {
+		return fetch('/cgi-bin/list.py')
+			.then(function (response) {
+				if (!response.ok) throw new Error('Listing failed: ' + response.status);
+				return response.json();
+			})
+			.then(function (data) { render(data.files || []); })
+			.catch(function (error) { say(error.message, true); });
+	}
+
+	function remove(name) {
+		say('Zapping ' + name + '...');
+
+		// encodeURIComponent, not string concatenation: a name with a space, a
+		// '?' or a '#' in it would otherwise change which resource is addressed.
+		fetch('/uploads/' + encodeURIComponent(name), { method: 'DELETE' })
+			.then(function (response) {
+				// A successful DELETE here is 204: no body, nothing to parse.
+				if (response.status === 204) {
+					window.location.href = '/success/delete.html';
+					return;
+				}
+				if (response.status === 404) throw new Error('No such file: ' + name);
+				if (response.status === 403) throw new Error('Not allowed to delete ' + name);
+				throw new Error('Server said ' + response.status);
+			})
+			.catch(function (error) { say(error.message, true); });
+	}
+
+	byName.addEventListener('submit', function (event) {
+		event.preventDefault();
+		var name = nameField.value.trim();
+		if (name) remove(name);
+	});
+
+	load();
+});
+</script>
+
+</body>
+</html>

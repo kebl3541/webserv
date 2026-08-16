@@ -1,118 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>webserv</title>
-<style>
-  html { font-size: 15px; }
-  body {
-    max-width: 40em;
-    margin: 3em auto;
-    padding: 0 1.5em 5em;
-    font-family: Georgia, "Times New Roman", serif;
-    line-height: 1.55;
-    color: #1a1a1a;
-    background: #fff;
-  }
-  h1 { font-size: 1.6em; margin: 0 0 .2em; font-weight: normal; }
-  h2 {
-    font-size: 1em; font-weight: bold; margin: 2.2em 0 .6em;
-    font-family: Menlo, Consolas, monospace;
-  }
-  p { margin: .6em 0; }
-  a { color: #0645ad; }
-  a:visited { color: #0b0080; }
-  code, pre { font-family: Menlo, Consolas, monospace; font-size: .88em; }
-  pre {
-    background: #f6f6f6;
-    border-left: 2px solid #ddd;
-    padding: .7em 1em;
-    overflow-x: auto;
-  }
-  dt { margin-top: .7em; font-family: Menlo, Consolas, monospace; font-size: .9em; }
-  dd { margin: 0 0 0 1.8em; color: #444; font-size: .95em; }
-  .sub { color: #666; font-size: .9em; margin-top: 0; }
-</style>
+<title>Webserv - Red 3D Stack</title>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="icon" href="/favicon.ico">
 </head>
 <body>
 
-<h1>webserv</h1>
-<p class="sub">An HTTP/1.1 server in C++98. One process, one thread, one
-<code>poll()</code> loop, no external libraries.</p>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
+<div class="bg-anim" aria-hidden="true"></div>
 
-<p>If you are reading this in a browser then the server is running, and this page
-came off the disk through the code in <code>src/</code>. Each link below takes a
-different path through it.</p>
+<h1>Webserv</h1>
 
-<h2>Things to try</h2>
+<main class="container" id="content">
 
-<dl>
-  <dt><a href="/files/">/files/</a></dt>
-  <dd>No index file, so the listing is generated. One file per extension, each
-      served with the media type that extension maps to: fetch
-      <a href="/files/style.css">style.css</a> with <code>curl -i</code> and it
-      is <code>text/css</code>, not <code>text/plain</code>.</dd>
+	<p class="tagline">Here to serve.</p>
 
-  <dt><a href="/docs/">/docs/</a></dt>
-  <dd>Routed with <code>alias</code>. There is no <code>docs</code> directory on
-      disk; the matched prefix is substituted rather than appended.</dd>
+	<div class="zone">
+		<h2>Static Upload</h2>
+		<a href="/upload/">Go to Static Upload</a>
+	</div>
 
-  <dt><a href="/uploads/">/uploads/</a></dt>
-  <dd>Empty until you put something in it. See the commands below.</dd>
+	<div class="zone">
+		<h2>Dynamic Upload</h2>
+		<form action="/cgi-bin/upload.py" method="post" enctype="multipart/form-data"
+		      class="upload-form" id="upload-form">
+			<div class="custom-file-input">
+				<input type="file" name="file" id="file-input" required>
+				<label for="file-input">Choose File</label>
+			</div>
+			<input type="submit" value="Upload File">
+		</form>
+		<p class="status" id="upload-status" role="status" aria-live="polite"></p>
+	</div>
 
-  <dt><a href="/cgi-bin/hello.py">/cgi-bin/hello.py</a></dt>
-  <dd>A Python script run through CGI, in a forked child, over pipes.</dd>
+	<div class="zone" id="fortune-zone">
+		<h2>Fortune Cookie</h2>
+		<a href="/cgi-bin/fortune.py" class="fortune-link">Get Your Fortune</a>
+	</div>
 
-  <dt><a href="/cgi-bin/env.py?name=world">/cgi-bin/env.py?name=world</a></dt>
-  <dd>Prints the environment the server hands a script, query string included.</dd>
+	<div class="zone">
+		<h2>Download Zone</h2>
+		<a href="/downloads/">See the Goodies</a>
+	</div>
 
-  <dt><a href="/cgi-bin/status.py?code=418">/cgi-bin/status.py?code=418</a></dt>
-  <dd>The script chooses the status code and the server honours it.</dd>
+	<div class="zone">
+		<h2>Delete Zone</h2>
+		<a href="/delete/">Zap Something</a>
+	</div>
 
-  <dt><a href="/old-page">/old-page</a></dt>
-  <dd>A 301, configured with <code>return</code>.</dd>
+	<div class="zone">
+		<h2>Cookies</h2>
+		<a href="/cookies/">Manage Cookies</a>
+	</div>
 
-  <dt><a href="/nothing-here">/nothing-here</a></dt>
-  <dd>404, served from the file named by <code>error_page</code>.</dd>
+	<div class="zone">
+		<h2>Under the Hood</h2>
+		<a href="/tour/">Take the Tour</a>
+	</div>
 
-  <dt><a href="http://127.0.0.1:8081/">127.0.0.1:8081</a></dt>
-  <dd>A second server block on another port. Same process, same loop.</dd>
-</dl>
+	<div class="zone">
+		<h2>About Us</h2>
+		<a href="/about/">About Us</a>
+	</div>
 
-<h2>From a terminal</h2>
+</main>
 
-<p>Upload a file, fetch it back, then delete it:</p>
+<script>
+// The original version of this handler had to dig the JSON out of the response
+// by hand: it searched the body for a blank line and sliced off everything
+// before it, because the old server copied the script's CGI headers into the
+// body and then sent its own on top. The headers are consumed and merged now,
+// so the body is the body and response.json() is enough.
+document.addEventListener('DOMContentLoaded', function () {
+	var form = document.getElementById('upload-form');
+	var status = document.getElementById('upload-status');
+	if (!form) return;
 
-<pre>curl -F "file=@notes.txt" http://127.0.0.1:8080/uploads/
-curl http://127.0.0.1:8080/uploads/notes.txt
-curl -X DELETE http://127.0.0.1:8080/uploads/notes.txt</pre>
+	function say(text, bad) {
+		status.textContent = text;
+		status.classList.add('visible');
+		status.classList.toggle('bad', !!bad);
+	}
 
-<p>Send a body in chunks. The server reassembles it before the script sees it,
-because CGI has no way to express chunked input:</p>
+	form.addEventListener('submit', function (event) {
+		event.preventDefault();
 
-<pre>curl -H "Transfer-Encoding: chunked" -d hello \
-     http://127.0.0.1:8080/cgi-bin/echo.py</pre>
+		var input = document.getElementById('file-input');
+		if (!input.files.length) {
+			say('Pick a file first.', true);
+			return;
+		}
 
-<p>Watch what it is doing while you poke at it:</p>
+		say('Uploading...');
 
-<pre>WEBSERV_LOG=debug ./webserv conf/default.conf</pre>
-
-<h2>Notes</h2>
-
-<p>The media type of a response comes from a table of file extensions. Guessing
-it from the first bytes of the file, which is what this server used to do,
-cannot tell CSS from JavaScript from plain text, so stylesheets went out as
-<code>text/plain</code> and browsers refused to apply them.</p>
-
-<p>Requests are parsed incrementally, so one split across many TCP segments costs
-no more than one arriving whole. Responses resume after a partial
-<code>send()</code>. CGI children talk over non-blocking pipes in the same
-<code>poll()</code> set as every socket, and are killed and reaped if they
-overrun their budget. Nothing in the request path blocks.</p>
-
-<p>Configuration lives in <code>conf/default.conf</code>. The routing rules, the
-directives, and what is deliberately not implemented are all in the README.</p>
+		fetch(form.action, { method: 'POST', body: new FormData(form) })
+			.then(function (response) {
+				var type = response.headers.get('Content-Type') || '';
+				if (type.indexOf('application/json') === -1)
+					return response.text().then(function (text) {
+						throw new Error('Server said ' + response.status + ': ' + text.slice(0, 200));
+					});
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (result) {
+				say(result.data.message, !result.ok);
+				if (result.ok) form.reset();
+			})
+			.catch(function (error) {
+				say(error.message || 'Upload Failed, Try Again!', true);
+			});
+	});
+});
+</script>
 
 </body>
 </html>
