@@ -19,81 +19,108 @@
 
 <main class="container">
 
-	<p class="tagline">One process, one thread, one <code>poll()</code> loop.</p>
+	<p class="tagline">How this server is built.</p>
 
 	<div class="zone wide">
 		<h2>What This Is</h2>
-		<p>A web server written from scratch in C++98: no libraries and no
-		borrowed parts. One program, one thread, juggling every visitor at once
-		by never stopping to wait for any of them. Every page on this site comes
-		through it, and each claim below tells you how to see it for
-		yourself.</p>
+		<p>Everything on this site is served by a web server written from
+		scratch in C++98, with no libraries and no borrowed parts. A web server
+		is a program that waits for browsers to connect, reads what they ask
+		for, and sends back an answer. This page explains how ours is put
+		together.</p>
 	</div>
 
 	<div class="zone wide">
-		<h2>The Claims, and the Proof</h2>
-		<dl class="routes">
+		<h2>One Worker, Many Visitors</h2>
+		<p>The whole server is a single program running a single thread of
+		work. It does not hire a worker per visitor. Instead it behaves like a
+		chess master playing forty boards at once: it keeps a list of every open
+		connection, asks the operating system which of them needs attention
+		right now, deals with each of those in one small step, and then asks
+		again. That question is a system call named <code>poll()</code>, and the
+		endless ask-and-serve cycle is called the event loop. It is the heart of
+		the program; everything else is machinery the loop calls on.</p>
+		<p>For this to work, one rule is absolute: no step is ever allowed to
+		stop and wait for a single visitor. If the server paused to wait for one
+		slow phone connection, every other visitor would freeze with it. So
+		every operation is set up to either finish immediately or politely say
+		"not yet", in which case the loop simply moves on and comes back
+		later.</p>
+	</div>
 
-			<dt>It tells browsers what kind of file it is sending</dt>
-			<dd>Every reply carries a label saying "this is HTML", "this is an
-			image", and so on. The old server guessed the label by peeking at the
-			file's first bytes. Images can be recognised that way, but a
-			stylesheet is just text, so CSS got labelled "plain text" and browsers
-			refused to apply it: the whole site showed up bare. This server looks
-			the label up from the file's extension instead.
-			<a href="/files/">/files/</a> holds one file of each kind to check
-			this with, and the simplest proof is the page you are reading: if the
-			site is red and gold, the labels are right.</dd>
+	<div class="zone wide">
+		<h2>The Life of One Request</h2>
+		<p>When your browser connects, the server accepts the call and creates
+		a small record for it: which connection this is, what has arrived so
+		far, what stage the conversation is at. Then the bytes of your request
+		start arriving, and here is a truth about networks that shapes the whole
+		design: data does not arrive in tidy wholes. A request may come in one
+		piece or in fifty fragments. The server's parser reads whatever
+		fragment has arrived, remembers exactly where it left off, and continues
+		when the next fragment comes. No fragment is ever read twice, and nobody
+		waits.</p>
+		<p>Once the request is complete, the server decides what it means. It
+		looks the requested path up in its configuration, which works like a
+		routing table: the most specific matching rule wins, and that rule says
+		what is allowed here and where the real files live. Then the answer is
+		prepared, whether that is a file read from disk, a folder listing
+		generated on the spot, or the output of a script. Sending it back
+		follows the same fragmented rhythm as reading: the server writes as
+		much as the connection will take right now, remembers its place, and
+		finishes on later turns of the loop. Afterwards the connection usually
+		stays open, ready for your next click without the cost of a new
+		call.</p>
+	</div>
 
-			<dt>It can take in files two different ways</dt>
-			<dd>When you upload a file, the browser wraps it in an envelope
-			format, and someone has to open the envelope. On the
-			<a href="/upload/">Upload Jam</a> page the server opens it itself:
-			it finds the file inside, cleans up the filename so nobody can smuggle
-			in a path like <code>../../secret</code>, and saves it. On the front
-			page's Dynamic Upload, the server instead passes the sealed envelope
-			to a small Python program that opens it. Same file either way; two
-			different parts of the server doing the work.</dd>
+	<div class="zone wide">
+		<h2>Scripts Are Separate Little Programs</h2>
+		<p>Some pages cannot be files because their content changes: the
+		<a href="/cgi-bin/fortune.py">fortune</a> is different every time, and
+		the uploads listing reflects whatever is on disk right now. For these,
+		the server starts a small external program, hands it the request, and
+		uses the program's output as the response. The mechanism is called CGI,
+		and it is the same idea that powered the early web.</p>
+		<p>The important design point is isolation. The script runs as its own
+		separate process, connected to the server by two thin channels, one
+		carrying the request in, one carrying the answer out, and those channels
+		are watched by the same loop that watches every visitor. A script that
+		misbehaves cannot drag the server down with it: each one gets a
+		deadline, and one that overruns is killed and answered with an error
+		page while every other visitor carries on. There is a script on this
+		site, <a href="/cgi-bin/slow.py">slow.py</a>, that hangs on purpose so
+		you can watch exactly that happen.</p>
+	</div>
 
-			<dt>Deleting is a real request, not a trick</dt>
-			<dd>Web requests come in kinds: GET fetches a page, POST sends data,
-			DELETE removes something. A plain HTML form can only send the first
-			two, which is why the original site's delete page never worked, its
-			form was shouting into a void. The <a href="/delete/">Delete Zone</a>
-			uses a line of JavaScript to send an actual DELETE, and the server
-			removes the file and answers "done". Watch
-			<a href="/uploads/">/uploads/</a> shrink to match.</dd>
+	<div class="zone wide">
+		<h2>Behaviour Lives in a Settings File</h2>
+		<p>Nothing about what this server serves is written into the code. A
+		single configuration file declares it all: which folders are public,
+		which actions each part of the site allows, how large an upload may be,
+		which page a visitor sees on each kind of error, and where old links
+		should forward. Change the file, restart, and the same program serves a
+		different site.</p>
+		<p>The file can even declare several websites at once. This site lives
+		on port 8080, and a <a href="http://127.0.0.1:8081/">second, separate
+		site</a> lives on port 8081, each with its own folders and its own
+		rules, yet both are served by the same single process and the same
+		loop. That is how real servers host many sites on one machine.</p>
+	</div>
 
-			<dt>A stuck script cannot freeze the site</dt>
-			<dd>Dynamic pages, the fortune, the uploads listing, are separate
-			little programs the server starts on demand. If one hangs forever,
-			the server gives it a deadline, kills it when the deadline passes, and
-			answers with an error page, while every other visitor sails on
-			unaffected. <a href="/cgi-bin/env.py">env.py</a> shows the information
-			a script is handed;
-			<a href="/cgi-bin/status.py?code=418">status.py</a> shows a script
-			choosing its own response code and the server respecting it.</dd>
-
-			<dt>It does not eat cookies</dt>
-			<dd>A reply can set several cookies, one header line each, and those
-			lines must not be squashed together. The easy way to store headers,
-			one slot per header name, keeps only the last line, so one cookie
-			silently vanishes; that was a real bug here once. The
-			<a href="/cookies/">Cookie Jar</a> fetches a script that sets two
-			cookies and shows both made the trip.</dd>
-
-			<dt>Where things live is settings, not code</dt>
-			<dd>One configuration file decides which folders are served, what is
-			forbidden, where old links redirect, and which page a visitor sees on
-			an error. <a href="/docs/">/docs/</a> is a folder that does not exist
-			under that name on disk, the config maps it;
-			<a href="/old-page">/old-page</a> forwards you home because one line
-			says so; <a href="/nothing-here">/nothing-here</a> shows the themed
-			404 page the config names. Even
-			<a href="http://127.0.0.1:8081/">port 8081</a> is just a second block
-			in the same file, served by the same single process.</dd>
-
-		</dl>
+	<div class="zone wide">
+		<h2>Built to Take a Punch</h2>
+		<p>A server lives on the open network, so it must assume visitors who
+		are careless, broken, or hostile. A request that makes no sense is
+		answered with an error, never obeyed halfway: the previous version of
+		this server could be killed outright by a single malformed upload
+		request, and this one answers that same request with a polite 400. An
+		upload that exceeds its size limit is refused while it is still
+		arriving, so nobody can flood the server's memory. A connection that
+		goes silent is closed after a timeout, so abandoned visits cannot pile
+		up. Filenames that arrive from strangers are cleaned before they touch
+		the disk, so a name like <code>../../secret</code> cannot climb out of
+		the upload folder. And every failure gets a themed page of its own, so
+		even going wrong stays in style: see
+		<a href="/nothing-here">the 404 page</a>.</p>
 	</div>
 
 	<div class="zone wide">
@@ -104,23 +131,15 @@
 curl http://127.0.0.1:8080/uploads/notes.txt
 curl -X DELETE http://127.0.0.1:8080/uploads/notes.txt</pre>
 
-		<p>Send a body in chunks; the server reassembles it before the script sees
-		it, because CGI has no way to express chunked input:</p>
-<pre>curl -H "Transfer-Encoding: chunked" -d hello \
-     http://127.0.0.1:8080/cgi-bin/echo.py</pre>
-
-		<p>Watch it work while you poke at it:</p>
+		<p>Watch the server work while you browse:</p>
 <pre>WEBSERV_LOG=debug ./webserv conf/default.conf</pre>
 	</div>
 
 	<div class="zone wide">
-		<h2>Fine Print</h2>
-
-		<p>A request that trickles in over fifty network packets costs no more to
-		read than one arriving whole, and a reply interrupted halfway picks up
-		where it left off. The full routing rules and the deliberate limits are
-		in the README; the audit of the original implementation, every bug with
-		its cause, is in AUDIT.md.</p>
+		<h2>Where to Read More</h2>
+		<p>The routing rules and the deliberate limits are in the README. The
+		full audit of the previous implementation, every bug with its cause and
+		its fix, is in AUDIT.md.</p>
 	</div>
 
 	<div class="zone">

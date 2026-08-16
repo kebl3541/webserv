@@ -65,7 +65,12 @@ def safe_name(raw):
     name = raw.replace("\\", "/").split("/")[-1].strip()
     if not name or name in (".", "..") or name.startswith("."):
         return ""
-    if not re.match(r"^[A-Za-z0-9._ -]{1,255}$", name):
+    # Letters in any language are fine; what gets refused is structure:
+    # separators, control characters, and anything shell-special. A file
+    # called "café.png" is a legitimate upload, not an attack.
+    if len(name) > 255:
+        return ""
+    if not re.match(r"^[\w.\- ]+$", name, re.UNICODE):
         return ""
     return name
 
@@ -87,7 +92,13 @@ def parse_multipart(body, boundary):
         split = chunk.find(b"\r\n\r\n")
         if split == -1:
             continue
-        headers = chunk[:split].decode("latin-1", "replace")
+        # Browsers send part headers, filename included, in UTF-8. Decode as
+        # that first; fall back to latin-1 so a strange client still gets a
+        # tidy 400 rather than a traceback.
+        try:
+            headers = chunk[:split].decode("utf-8")
+        except UnicodeDecodeError:
+            headers = chunk[:split].decode("latin-1", "replace")
         content = chunk[split + 4:]
         # Every part is followed by CRLF before the next delimiter.
         if content.endswith(b"\r\n"):

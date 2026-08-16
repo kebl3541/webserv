@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				var gotFirst = pairs.some(function (p) { return p.indexOf('first=') === 0; });
 				var gotSecond = pairs.some(function (p) { return p.indexOf('second=') === 0; });
 				if (gotFirst && gotSecond)
-					say('Both cookies arrived. Verdict: you will crush this interview, and nothing will crash it.');
+					say('Both cookies arrived.');
 				else if (gotFirst || gotSecond)
 					say('Only one cookie arrived. The server is eating Set-Cookie headers again.', true);
 				else
