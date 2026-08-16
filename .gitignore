@@ -20,3 +20,7 @@ www2/uploads/*
 # Sanitizer and debug artefacts
 *.dSYM/
 core
+
+# Python bytecode from running the CGI scripts
+__pycache__/
+*.pyc
