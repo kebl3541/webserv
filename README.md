@@ -270,10 +270,9 @@ connection it was serving. It is now a 400, and it is a test.
 
 ---
 
-## Known limits
+## Some Known limits
 
-Stated plainly, because knowing where a design stops matters more than pretending
-it does not.
+Here you go:
 
 - **Responses are built in memory.** A large file is read fully before it is
   sent. Streaming it from disk, or handing it to `sendfile()`, would be the next
